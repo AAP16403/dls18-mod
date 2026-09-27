@@ -412,8 +412,9 @@ static void h_test_bid_term_controls(void) {
 
 /* ---- saves ---- */
 typedef struct { uint8_t *buf; size_t size; uint8_t user_link[LINK_STRIDE]; } HSave;
+static int32_t h_write_version = 0xB5;   /* the libDLS18 save version the test writes with */
 static HSave save_game(void) {
-    HSerializer w; memset(&w, 0, sizeof(w)); w.writing = 1; w.version = 0xB5;
+    HSerializer w; memset(&w, 0, sizeof(w)); w.writing = 1; w.version = h_write_version;
     career_market_on_serialize(h_season(), &w, FAKE_BASE);
     HSave s; s.buf = w.buf; s.size = w.pos;
     memcpy(s.user_link, link_in(P32(h_db.live_links), USER_TEAM), LINK_STRIDE);   /* SerializeDreamTeam */
@@ -1345,6 +1346,155 @@ static void h_test_hub(void) {
                          g_hub.row_count, countered, kept);
 }
 
+/* chemistry: fake post-match rating (STAT_PlayerGetRatingOverall) by lineup index */
+static int32_t h_chem_overall[32];
+static int32_t m_chem_overall(int32_t team, int32_t index) {
+    (void)team;
+    return index >= 0 && index < 32 ? h_chem_overall[index] : 0;
+}
+
+static void h_test_chem(void) {
+    static CareerMarketState saved_market;
+    static uint8_t saved_ext[sizeof(g_ext)];
+    static MarketExt3 saved_ext3;
+    uint32_t base = FAKE_BASE;
+    sync_accounts(base);
+    build_player_cache(base);
+    memcpy(&saved_market, &g_market, sizeof(g_market));
+    memcpy(saved_ext, &g_ext, sizeof(g_ext));
+    memcpy(&saved_ext3, &g_ext3, sizeof(g_ext3));
+    /* the boost curve: 1% at 0, 15% at 1000, rising, no step above 0.1% per 10 chemistry */
+    if (chem_boost_x10(0) != 10 || chem_boost_x10(1000) != 150) fail("chem: boost ends", chem_boost_x10(0), chem_boost_x10(1000));
+    for (int32_t c = 10; c <= 1000; c += 10) {
+        int32_t d = chem_boost_x10(c) - chem_boost_x10(c - 10);
+        if (d < 0 || d > 3) fail("chem: boost curve jumps", c, d);
+    }
+    /* a squad: the best 11 start every match at 6.9, a bench player plays 1 in 4 at 8.0, another 1 in 4 at 5.2,
+     * one starter plays every match at 5.0 */
+    clear_ext3();
+    chem_sync();
+    int32_t ids[40], n = 0;
+    for (int32_t i = 0; i < g_player_count && n < 40; ++i)
+        if (g_players[i].owner_id == USER_TEAM_ID) ids[n++] = g_players[i].player_id;
+    if (n < 16) fail("chem: squad too small", n, 0);
+    for (int32_t i = 0; i < n; ++i) if (!chem_find(ids[i])) fail("chem: player not tracked", ids[i], i);
+    int32_t good_sub = ids[12], poor_sub = ids[13], poor_regular = ids[3], unused = ids[14];
+    /* a new signing: tracked from the next sync, as new */
+    int32_t newcomer = -1;
+    {
+        ChemPlayer *c = chem_find(ids[10]);
+        uint8_t *bytes = (uint8_t *)c;
+        for (uint32_t k = 0; k < sizeof(*c); ++k) bytes[k] = 0;
+        chem_sync();
+        c = chem_find(ids[10]);
+        if (!c || c->joined != g_ext3.matches || c->apps_pm != 0) fail("chem: a new arrival is not a new signing", ids[10], 0);
+        newcomer = ids[10];
+    }
+    ChemParts start;
+    chem_parts(newcomer, &start);
+    int32_t mid_newcomer = 0;
+    for (int32_t m = 0; m < 24; ++m) {
+        int32_t mids[18], ov[18], k = 0;
+        for (int32_t i = 0; i < 11; ++i) { mids[k] = ids[i]; ov[k++] = ids[i] == poor_regular ? 82 : 111; }
+        mids[k] = good_sub; ov[k++] = m % 4 == 0 ? 136 : 0;
+        mids[k] = poor_sub; ov[k++] = m % 4 == 0 ? 85 : 0;
+        mids[k] = unused; ov[k++] = 0;
+        chem_record(mids, ov, k, 3);
+        if (m == 5) { ChemParts q; chem_parts(newcomer, &q); mid_newcomer = q.chemistry; }
+    }
+    ChemParts reg, gsub, psub, preg, fresh, idle;
+    chem_parts(ids[0], &reg); chem_parts(good_sub, &gsub); chem_parts(poor_sub, &psub);
+    chem_parts(poor_regular, &preg); chem_parts(newcomer, &fresh); chem_parts(unused, &idle);
+    if (chem_form_x10(ids[0]) < 66 || chem_form_x10(ids[0]) > 72) fail("chem: form does not track the ratings", chem_form_x10(ids[0]), 69);
+    if (reg.chemistry < 650 || reg.chemistry > 900) fail("chem: settled starter out of range", reg.chemistry, 0);
+    if (gsub.chemistry <= psub.chemistry + 100) fail("chem: good form does not make up for few minutes", gsub.chemistry, psub.chemistry);
+    if (gsub.involvement <= psub.involvement) fail("chem: involvement ignores form", gsub.involvement, psub.involvement);
+    if (preg.chemistry >= reg.chemistry) fail("chem: a poor regular keeps full chemistry", preg.chemistry, reg.chemistry);
+    if (!(start.chemistry < mid_newcomer && mid_newcomer < fresh.chemistry)) fail("chem: a new signing does not settle", start.chemistry, fresh.chemistry);
+    if (idle.chemistry >= psub.chemistry) fail("chem: an unused player gains chemistry", idle.chemistry, psub.chemistry);
+    if (chem_familiarity_pm() != 1000) fail("chem: formation familiarity did not build", chem_familiarity_pm(), 0);
+    chem_record(ids, h_chem_overall, 0, 5);            /* a formation change drops familiarity */
+    if (chem_familiarity_pm() >= 1000) fail("chem: a formation change kept familiarity", chem_familiarity_pm(), 0);
+    uint8_t hist[CHEM_HISTORY];
+    if (chem_history(ids[0], hist) != CHEM_HISTORY || hist[CHEM_HISTORY - 1] != 0 || hist[CHEM_HISTORY - 2] != chem_rating_x10(111))
+        fail("chem: rating history wrong", hist[CHEM_HISTORY - 2], chem_rating_x10(111));
+    /* save at 0xB7 keeps it; a 0xB6 save neither writes nor reads the block, and the market still loads */
+    MarketExt3 before;
+    memcpy(&before, &g_ext3, sizeof(g_ext3));
+    h_write_version = 0xB7;
+    HSave b7 = save_game();
+    restart_and_load(&b7, 0xB7);
+    free(b7.buf);
+    if (memcmp(&before, &g_ext3, sizeof(g_ext3)) != 0) fail("chem: 0xB7 save lost the chemistry", 0, 0);
+    if (!state_is_valid()) fail("chem: market invalid after a 0xB7 load", 0, 0);
+    h_write_version = 0xB6;
+    HSave b6 = save_game();
+    restart_and_load(&b6, 0xB6);
+    free(b6.buf);
+    if (!state_is_valid()) fail("chem: market invalid after a 0xB6 load", 0, 0);
+    if (g_ext3.matches != 0) fail("chem: a 0xB6 load kept stale chemistry", g_ext3.matches, 0);
+    h_write_version = 0xB5;
+    /* device path: the fake tGame match table through chem_on_match */
+    clear_ext3();
+    build_player_cache(base);
+    chem_sync();
+    uint8_t *tg = (uint8_t *)(uintptr_t)(base + TGAME_BASE) + 1 * 0x1018;
+    static uint8_t lineup[18 * 0xB0];
+    memset(lineup, 0, sizeof(lineup));
+    for (int32_t i = 0; i < 14; ++i) { *(uint16_t *)(lineup + i * 0xB0) = (uint16_t)ids[i]; h_chem_overall[i] = i < 11 ? 100 + i : 0; }
+    uint8_t saved_count = *(tg + 0x3900);
+    void *saved_ptr = *(void **)(tg + 0x47C4);
+    *(tg + 0x3900) = 14;
+    *(void **)(tg + 0x47C4) = lineup;
+    thunk(0x2B730D, m_chem_overall);
+    chem_on_match(base, 1, -1);
+    thunk(0x2B730D, m_unexpected);
+    *(tg + 0x3900) = saved_count;
+    *(void **)(tg + 0x47C4) = saved_ptr;
+    if (g_ext3.matches != 1) fail("chem: device capture did not record", g_ext3.matches, 0);
+    if (chem_history(ids[2], hist) != 1 || hist[0] != chem_rating_x10(102)) fail("chem: device rating wrong", hist[0], chem_rating_x10(102));
+    if (chem_history(ids[12], hist) != 1 || hist[0] != 0) fail("chem: an unused sub got a rating", hist[0], 0);
+    /* seeding a career that already played: league appearances from the game's tournament stats */
+    {
+        static uint8_t league[0x40];
+        static uint8_t rows[40 * 10];
+        memset(league, 0, sizeof(league));
+        memset(rows, 0, sizeof(rows));
+        for (int32_t i = 0; i < n; ++i) {
+            *(uint16_t *)(rows + i * 10) = (uint16_t)ids[i];
+            rows[i * 10 + 4] = (uint8_t)(i < 11 ? 20 : i < 15 ? 5 : 0);
+            rows[i * 10 + 6] = 3;                      /* other counters must not be read as appearances */
+        }
+        *(uint16_t *)(league + 0x30) = (uint16_t)n;
+        *(uint8_t **)(league + 0x34) = rows;
+        void **slot = (void **)(uintptr_t)(base + PROFILE_INSTANCE + 0x14 + 0x6AC);
+        void *saved_slot = *slot;
+        *slot = league;
+        clear_ext3();
+        chem_prepare(base);
+        *slot = saved_slot;
+        ChemPlayer *a = chem_find(ids[0]), *b2 = chem_find(ids[12]), *z = chem_find(ids[n - 1]);
+        if (!a || a->apps_pm != 1000 || !b2 || b2->apps_pm != 250 || !z || z->apps_pm != 0)
+            fail("chem: seeded appearance shares wrong", a ? a->apps_pm : -1, b2 ? b2->apps_pm : -1);
+        ChemParts q;
+        chem_parts(ids[0], &q);
+        if (q.matches < 40) fail("chem: a settled player was seeded as new", q.matches, 0);
+        chem_record(ids, h_chem_overall, 0, -1);        /* a second prepare must not seed again */
+        a->apps_pm = 123;
+        chem_prepare(base);
+        if (a->apps_pm != 123) fail("chem: seeding ran again on a started career", a->apps_pm, 0);
+    }
+    memcpy(&g_market, &saved_market, sizeof(g_market));
+    memcpy(&g_ext, saved_ext, sizeof(g_ext));
+    memcpy(&g_ext3, &saved_ext3, sizeof(g_ext3));
+    sync_accounts(base);
+    build_player_cache(base);
+    ++g_price_epoch;
+    if (!h_quiet) printf("chemistry: boost 1-15%% smooth, settled starter %d, good sub %d vs poor sub %d, poor regular %d, "
+                         "new signing %d -> %d -> %d, 0xB7 save kept, 0xB6 save safe, device capture and season seeding OK\n",
+                         reg.chemistry, gsub.chemistry, psub.chemistry, preg.chemistry, start.chemistry, mid_newcomer, fresh.chemistry);
+}
+
 static void h_test_tm2(void) {
     static CareerMarketState saved_market;
     static uint8_t saved_ext[sizeof(g_ext)];
@@ -1716,6 +1866,7 @@ int main(int argc, char **argv) {
     h_test_continuous();
     h_test_tm2();
     h_test_hub();
+    h_test_chem();
     FILE *csv = csv_path ? fopen(csv_path, "w") : NULL;
     if (csv) fprintf(csv, "season,club,rep,tier_value,cash,budget,wage_budget,payroll,revenue,squad_value,strength,size\n");
 

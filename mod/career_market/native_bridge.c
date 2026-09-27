@@ -320,6 +320,8 @@ static int32_t mul_div(int32_t value, int32_t multiplier, int32_t divisor) {
 }
 
 static void clear_ext2(void);
+static void clear_ext3(void);
+static void chem_serialize(void *serializer, void (*fn)(void *, uint64_t *, int32_t));
 static void apply_price_schedule(uint32_t base);
 
 /* modcore (modcore.c): runtime C hooks through the extended library's CAVE3/MODDATA segments.
@@ -380,6 +382,7 @@ static void clear_state(void) {
     for (int32_t i = 0; i < 32; ++i) g_ext.signing_player[i] = -1;
     g_ext.econ.division = -1;
     clear_ext2();
+    clear_ext3();
 }
 
 static int32_t find_account(int32_t team_id) {
@@ -2879,6 +2882,7 @@ void career_market_on_serialize(void *season, void *serializer, uint32_t base) {
     for (uint32_t i = 0; i < (uint32_t)(sizeof(g_ext2) / sizeof(uint64_t)); ++i) {
         serialize_u64(serializer, &ext2_words[i], MARKET_EXT2_SAVE_VERSION);
     }
+    chem_serialize(serializer, serialize_u64);     /* v39 chemistry, block version 0xB7 */
 
     if (!writing) {
         rebuild_contract_index();
@@ -4807,6 +4811,7 @@ static void ui_show_refusal(uint32_t base, const MarketPlayer *player, int32_t c
  * ------------------------------------------------------------------------------------------- */
 #define MATCH_SETUP_INFO 0x7C2AAC          /* CMatchSetup::ms_tInfo */
 #define TGAME_BASE 0x78C5F8                /* tGame */
+#include "chemistry.c"
 #define MC_IN_POST_MATCH_CALLBACK 0x83F250
 #define CREDIT_AWARD_ROWS 0x75D7D4         /* CFEPostMatchCreditAwards::ms_tCreditAwardInfo, stride 0x208 */
 #define CREDIT_AWARD_ROW_STRIDE 0x208
@@ -4856,6 +4861,7 @@ int32_t career_market_on_match_awards(int32_t unused0, int32_t unused1, uint32_t
     int32_t side = raw_side == 2 ? -1 : raw_side;
     if (side < 0) return 0;
     int32_t sw = *(int32_t *)(tgame + 0x9ed4);
+    chem_on_match(base, (side ^ sw) & 1, side);    /* v39: match ratings and chemistry */
     int32_t us = *(uint8_t *)(tgame + 0x9edc + (side ^ sw));
     int32_t them = *(uint8_t *)(tgame + 0x9edc + ((1 - side) ^ sw));
     int32_t home = *(int32_t *)(tinfo + 0xf6c) == USER_TEAM_ID;

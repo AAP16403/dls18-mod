@@ -1453,9 +1453,9 @@ def main():
                 + cave2_data),
         ECON_MATCH_HOOK: branch_to(lab["cave_econ_match"], ECON_MATCH_HOOK, "bl"),
         ECON_SEASON_HOOK: branch_to(lab["cave_econ_season"], ECON_SEASON_HOOK, "bl"),
-        SAVE_VERSION_SETUP: asm("movs r1, #0xb5", SAVE_VERSION_SETUP),   # 0xb5: v7 money books block
+        SAVE_VERSION_SETUP: asm("movs r1, #0xb7", SAVE_VERSION_SETUP),   # 0xb5 v7 books, 0xb6 squad64, 0xb7 v39 chemistry
         GET_CREDITS: asm("movw r1, #0xa7cc; movt r1, #2", GET_CREDITS),     # stock: real coin balance
-        SAVE_VERSION_BOOT: asm("movs r1, #0xb5", SAVE_VERSION_BOOT),
+        SAVE_VERSION_BOOT: asm("movs r1, #0xb7", SAVE_VERSION_BOOT),
         VIDEO_DOUBLER: asm("movs r0, #0; bx lr", VIDEO_DOUBLER),         # v7: no coins for adverts
         DEV_RECORDS_CAP: asm(f"cmp r0, #{cfg.dev_records_cap - 1}", DEV_RECORDS_CAP),   # v8: 255 records
         CUSTOM_IMAGE_MAX: asm(f"mov.w r4, #{cfg.custom_image_max}", CUSTOM_IMAGE_MAX),
