@@ -1,0 +1,1297 @@
+{
+ "counts": {
+  "teams": 232,
+  "players": 5816,
+  "players_on_rosters": 4275,
+  "players_on_multiple_rosters": 431,
+  "players_without_team": 1541,
+  "market_search_teams": 220,
+  "dream_league_pool": 152
+ },
+ "by_category": {
+  "club_league": {
+   "teams": 152,
+   "squad_size": {
+    "n": 152,
+    "min": 17,
+    "p25": 19,
+    "median": 21.0,
+    "p75": 23,
+    "max": 28,
+    "mean": 21.2
+   },
+   "team_rating": {
+    "n": 152,
+    "min": 61,
+    "p25": 68,
+    "median": 71.0,
+    "p75": 74,
+    "max": 83,
+    "mean": 71.5
+   },
+   "player_rating": {
+    "n": 3222,
+    "min": 54,
+    "p25": 67,
+    "median": 71.0,
+    "p75": 75,
+    "max": 93,
+    "mean": 71.3
+   },
+   "player_value": {
+    "n": 3222,
+    "min": 75,
+    "p25": 360,
+    "median": 545.0,
+    "p75": 745,
+    "max": 2915,
+    "mean": 601.7
+   },
+   "team_value_total": {
+    "n": 152,
+    "min": 3370,
+    "p25": 7985,
+    "median": 11402.5,
+    "p75": 15740,
+    "max": 29950,
+    "mean": 12753.5
+   }
+  },
+  "international": {
+   "teams": 42,
+   "squad_size": {
+    "n": 42,
+    "min": 16,
+    "p25": 16,
+    "median": 20.0,
+    "p75": 22,
+    "max": 31,
+    "mean": 20.3
+   },
+   "team_rating": {
+    "n": 42,
+    "min": 65,
+    "p25": 65,
+    "median": 73.0,
+    "p75": 76,
+    "max": 83,
+    "mean": 72.3
+   },
+   "player_rating": {
+    "n": 851,
+    "min": 56,
+    "p25": 68,
+    "median": 73,
+    "p75": 77,
+    "max": 93,
+    "mean": 72.6
+   },
+   "player_value": {
+    "n": 851,
+    "min": 95,
+    "p25": 400,
+    "median": 655,
+    "p75": 945,
+    "max": 2915,
+    "mean": 708.3
+   },
+   "team_value_total": {
+    "n": 42,
+    "min": 4845,
+    "p25": 5365,
+    "median": 13922.5,
+    "p75": 17200,
+    "max": 34300,
+    "mean": 14352.0
+   }
+  },
+  "miscellaneous": {
+   "teams": 11,
+   "squad_size": {
+    "n": 11,
+    "min": 16,
+    "p25": 17,
+    "median": 20,
+    "p75": 23,
+    "max": 23,
+    "mean": 19.9
+   },
+   "team_rating": {
+    "n": 11,
+    "min": 64,
+    "p25": 73,
+    "median": 81,
+    "p75": 84,
+    "max": 93,
+    "mean": 79.3
+   },
+   "player_rating": {
+    "n": 219,
+    "min": 38,
+    "p25": 73,
+    "median": 81,
+    "p75": 86,
+    "max": 97,
+    "mean": 78.9
+   },
+   "player_value": {
+    "n": 219,
+    "min": 50,
+    "p25": 605,
+    "median": 1195,
+    "p75": 1715,
+    "max": 3405,
+    "mean": 1271.2
+   },
+   "team_value_total": {
+    "n": 11,
+    "min": 4650,
+    "p25": 12430,
+    "median": 26250,
+    "p75": 36105,
+    "max": 46880,
+    "mean": 25307.7
+   }
+  },
+  "relegation_league": {
+   "teams": 18,
+   "squad_size": {
+    "n": 18,
+    "min": 16,
+    "p25": 16,
+    "median": 18.5,
+    "p75": 20,
+    "max": 21,
+    "mean": 18.2
+   },
+   "team_rating": {
+    "n": 18,
+    "min": 60,
+    "p25": 66,
+    "median": 67.0,
+    "p75": 69,
+    "max": 72,
+    "mean": 67.1
+   },
+   "player_rating": {
+    "n": 328,
+    "min": 54,
+    "p25": 64,
+    "median": 68.0,
+    "p75": 70,
+    "max": 77,
+    "mean": 67.2
+   },
+   "player_value": {
+    "n": 328,
+    "min": 80,
+    "p25": 260,
+    "median": 362.5,
+    "p75": 495,
+    "max": 1035,
+    "mean": 390.9
+   },
+   "team_value_total": {
+    "n": 18,
+    "min": 2590,
+    "p25": 6070,
+    "median": 7240.0,
+    "p75": 8410,
+    "max": 11125,
+    "mean": 7123.6
+   }
+  },
+  "unassigned": {
+   "teams": 9,
+   "squad_size": {
+    "n": 9,
+    "min": 16,
+    "p25": 16,
+    "median": 17,
+    "p75": 18,
+    "max": 23,
+    "mean": 17.9
+   },
+   "team_rating": {
+    "n": 9,
+    "min": 63,
+    "p25": 65,
+    "median": 67,
+    "p75": 70,
+    "max": 71,
+    "mean": 67.1
+   },
+   "player_rating": {
+    "n": 161,
+    "min": 55,
+    "p25": 65,
+    "median": 68,
+    "p75": 71,
+    "max": 75,
+    "mean": 67.5
+   },
+   "player_value": {
+    "n": 161,
+    "min": 95,
+    "p25": 290,
+    "median": 365,
+    "p75": 515,
+    "max": 810,
+    "mean": 396.1
+   },
+   "team_value_total": {
+    "n": 9,
+    "min": 3770,
+    "p25": 5055,
+    "median": 7120,
+    "p75": 9520,
+    "max": 10760,
+    "mean": 7086.1
+   }
+  }
+ },
+ "by_league_code": {
+  "-1": {
+   "note": "unassigned (TTeamROM+4 = -1 -> CTeam+5 = 0xff): excluded from market search and DL pool",
+   "teams": 9,
+   "team_rating": {
+    "n": 9,
+    "min": 63,
+    "p25": 65,
+    "median": 67,
+    "p75": 70,
+    "max": 71,
+    "mean": 67.1
+   },
+   "team_value_total": {
+    "n": 9,
+    "min": 3770,
+    "p25": 5055,
+    "median": 7120,
+    "p75": 9520,
+    "max": 10760,
+    "mean": 7086.1
+   }
+  },
+  "0": {
+   "note": "England top flight",
+   "teams": 20,
+   "team_rating": {
+    "n": 20,
+    "min": 72,
+    "p25": 75,
+    "median": 76.0,
+    "p75": 80,
+    "max": 82,
+    "mean": 76.5
+   },
+   "team_value_total": {
+    "n": 20,
+    "min": 12720,
+    "p25": 17340,
+    "median": 18440.0,
+    "p75": 26355,
+    "max": 28995,
+    "mean": 20445.5
+   }
+  },
+  "1": {
+   "note": "England 2nd tier",
+   "teams": 24,
+   "team_rating": {
+    "n": 24,
+    "min": 65,
+    "p25": 67,
+    "median": 69.0,
+    "p75": 70,
+    "max": 72,
+    "mean": 68.7
+   },
+   "team_value_total": {
+    "n": 24,
+    "min": 5675,
+    "p25": 7885,
+    "median": 9787.5,
+    "p75": 11205,
+    "max": 13310,
+    "mean": 9447.1
+   }
+  },
+  "2": {
+   "note": "France",
+   "teams": 20,
+   "team_rating": {
+    "n": 20,
+    "min": 69,
+    "p25": 70,
+    "median": 71.0,
+    "p75": 74,
+    "max": 81,
+    "mean": 72.3
+   },
+   "team_value_total": {
+    "n": 20,
+    "min": 8335,
+    "p25": 10410,
+    "median": 11157.5,
+    "p75": 13980,
+    "max": 25565,
+    "mean": 12733.2
+   }
+  },
+  "3": {
+   "note": "Italy",
+   "teams": 20,
+   "team_rating": {
+    "n": 20,
+    "min": 70,
+    "p25": 72,
+    "median": 73.0,
+    "p75": 78,
+    "max": 83,
+    "mean": 74.5
+   },
+   "team_value_total": {
+    "n": 20,
+    "min": 9465,
+    "p25": 12935,
+    "median": 13622.5,
+    "p75": 22490,
+    "max": 29930,
+    "mean": 16108.5
+   }
+  },
+  "5": {
+   "note": "Spain",
+   "teams": 20,
+   "team_rating": {
+    "n": 20,
+    "min": 72,
+    "p25": 73,
+    "median": 74.0,
+    "p75": 77,
+    "max": 83,
+    "mean": 75.2
+   },
+   "team_value_total": {
+    "n": 20,
+    "min": 10810,
+    "p25": 13095,
+    "median": 14040.0,
+    "p75": 20015,
+    "max": 29950,
+    "mean": 16644.5
+   }
+  },
+  "7": {
+   "note": "Scotland",
+   "teams": 12,
+   "team_rating": {
+    "n": 12,
+    "min": 61,
+    "p25": 62,
+    "median": 64.0,
+    "p75": 66,
+    "max": 72,
+    "mean": 64.5
+   },
+   "team_value_total": {
+    "n": 12,
+    "min": 3370,
+    "p25": 4325,
+    "median": 5250.0,
+    "p75": 6410,
+    "max": 14390,
+    "mean": 6088.3
+   }
+  },
+  "9": {
+   "note": "International (Europe)",
+   "teams": 17,
+   "team_rating": {
+    "n": 17,
+    "min": 71,
+    "p25": 73,
+    "median": 75,
+    "p75": 80,
+    "max": 83,
+    "mean": 76.2
+   },
+   "team_value_total": {
+    "n": 17,
+    "min": 10615,
+    "p25": 14470,
+    "median": 15710,
+    "p75": 23950,
+    "max": 34300,
+    "mean": 19557.6
+   }
+  },
+  "10": {
+   "note": "International (Asia/Oceania)",
+   "teams": 7,
+   "team_rating": {
+    "n": 7,
+    "min": 65,
+    "p25": 65,
+    "median": 65,
+    "p75": 65,
+    "max": 70,
+    "mean": 65.7
+   },
+   "team_value_total": {
+    "n": 7,
+    "min": 4845,
+    "p25": 4900,
+    "median": 5185,
+    "p75": 5255,
+    "max": 11125,
+    "mean": 5920.7
+   }
+  },
+  "11": {
+   "note": "International (S. America)",
+   "teams": 7,
+   "team_rating": {
+    "n": 7,
+    "min": 71,
+    "p25": 72,
+    "median": 76,
+    "p75": 81,
+    "max": 82,
+    "mean": 76.6
+   },
+   "team_value_total": {
+    "n": 7,
+    "min": 10075,
+    "p25": 12845,
+    "median": 19200,
+    "p75": 27615,
+    "max": 28825,
+    "mean": 19699.3
+   }
+  },
+  "12": {
+   "note": "International (N/C America)",
+   "teams": 3,
+   "team_rating": {
+    "n": 3,
+    "min": 65,
+    "p25": 65,
+    "median": 65,
+    "p75": 70,
+    "max": 70,
+    "mean": 66.7
+   },
+   "team_value_total": {
+    "n": 3,
+    "min": 4915,
+    "p25": 4915,
+    "median": 5510,
+    "p75": 10530,
+    "max": 10530,
+    "mean": 6985.0
+   }
+  },
+  "13": {
+   "note": "International (Africa)",
+   "teams": 8,
+   "team_rating": {
+    "n": 8,
+    "min": 65,
+    "p25": 65,
+    "median": 65.0,
+    "p75": 74,
+    "max": 74,
+    "mean": 68.4
+   },
+   "team_value_total": {
+    "n": 8,
+    "min": 4930,
+    "p25": 5275,
+    "median": 5422.5,
+    "p75": 14450,
+    "max": 14925,
+    "mean": 8751.2
+   }
+  },
+  "17": {
+   "note": "Miscellaneous (Dream FC user team, all-star/legend XIs)",
+   "teams": 11,
+   "team_rating": {
+    "n": 11,
+    "min": 64,
+    "p25": 73,
+    "median": 81,
+    "p75": 84,
+    "max": 93,
+    "mean": 79.3
+   },
+   "team_value_total": {
+    "n": 11,
+    "min": 4650,
+    "p25": 12430,
+    "median": 26250,
+    "p75": 36105,
+    "max": 46880,
+    "mean": 25307.7
+   }
+  },
+  "18": {
+   "note": "relegation league (England)",
+   "teams": 3,
+   "team_rating": {
+    "n": 3,
+    "min": 64,
+    "p25": 64,
+    "median": 66,
+    "p75": 67,
+    "max": 67,
+    "mean": 65.7
+   },
+   "team_value_total": {
+    "n": 3,
+    "min": 4310,
+    "p25": 4310,
+    "median": 6720,
+    "p75": 7120,
+    "max": 7120,
+    "mean": 6050.0
+   }
+  },
+  "19": {
+   "note": "relegation league (France)",
+   "teams": 3,
+   "team_rating": {
+    "n": 3,
+    "min": 67,
+    "p25": 67,
+    "median": 68,
+    "p75": 70,
+    "max": 70,
+    "mean": 68.3
+   },
+   "team_value_total": {
+    "n": 3,
+    "min": 7090,
+    "p25": 7090,
+    "median": 7360,
+    "p75": 8820,
+    "max": 8820,
+    "mean": 7756.7
+   }
+  },
+  "20": {
+   "note": "relegation league (Italy)",
+   "teams": 3,
+   "team_rating": {
+    "n": 3,
+    "min": 69,
+    "p25": 69,
+    "median": 69,
+    "p75": 70,
+    "max": 70,
+    "mean": 69.3
+   },
+   "team_value_total": {
+    "n": 3,
+    "min": 8160,
+    "p25": 8160,
+    "median": 8505,
+    "p75": 10070,
+    "max": 10070,
+    "mean": 8911.7
+   }
+  },
+  "22": {
+   "note": "relegation league (Spain)",
+   "teams": 3,
+   "team_rating": {
+    "n": 3,
+    "min": 67,
+    "p25": 67,
+    "median": 69,
+    "p75": 72,
+    "max": 72,
+    "mean": 69.3
+   },
+   "team_value_total": {
+    "n": 3,
+    "min": 7625,
+    "p25": 7625,
+    "median": 8030,
+    "p75": 11125,
+    "max": 11125,
+    "mean": 8926.7
+   }
+  },
+  "23": {
+   "note": "relegation league (Scotland)",
+   "teams": 2,
+   "team_rating": {
+    "n": 2,
+    "min": 60,
+    "p25": 60,
+    "median": 61.0,
+    "p75": 62,
+    "max": 62,
+    "mean": 61.0
+   },
+   "team_value_total": {
+    "n": 2,
+    "min": 2590,
+    "p25": 2590,
+    "median": 3235.0,
+    "p75": 3880,
+    "max": 3880,
+    "mean": 3235.0
+   }
+  },
+  "24": {
+   "note": "Netherlands",
+   "teams": 18,
+   "team_rating": {
+    "n": 18,
+    "min": 64,
+    "p25": 65,
+    "median": 66.5,
+    "p75": 69,
+    "max": 74,
+    "mean": 67.6
+   },
+   "team_value_total": {
+    "n": 18,
+    "min": 5055,
+    "p25": 5845,
+    "median": 6567.5,
+    "p75": 9165,
+    "max": 15255,
+    "mean": 7922.2
+   }
+  },
+  "25": {
+   "note": "relegation league (Netherlands)",
+   "teams": 2,
+   "team_rating": {
+    "n": 2,
+    "min": 65,
+    "p25": 65,
+    "median": 65.5,
+    "p75": 66,
+    "max": 66,
+    "mean": 65.5
+   },
+   "team_value_total": {
+    "n": 2,
+    "min": 6010,
+    "p25": 6010,
+    "median": 6040.0,
+    "p75": 6070,
+    "max": 6070,
+    "mean": 6040.0
+   }
+  },
+  "27": {
+   "note": "Portugal",
+   "teams": 18,
+   "team_rating": {
+    "n": 18,
+    "min": 65,
+    "p25": 67,
+    "median": 68.5,
+    "p75": 70,
+    "max": 77,
+    "mean": 69.4
+   },
+   "team_value_total": {
+    "n": 18,
+    "min": 5725,
+    "p25": 6985,
+    "median": 8322.5,
+    "p75": 10100,
+    "max": 20345,
+    "mean": 9861.1
+   }
+  },
+  "28": {
+   "note": "relegation league (Portugal)",
+   "teams": 2,
+   "team_rating": {
+    "n": 2,
+    "min": 67,
+    "p25": 67,
+    "median": 68.0,
+    "p75": 69,
+    "max": 69,
+    "mean": 68.0
+   },
+   "team_value_total": {
+    "n": 2,
+    "min": 6330,
+    "p25": 6330,
+    "median": 7370.0,
+    "p75": 8410,
+    "max": 8410,
+    "mean": 7370.0
+   }
+  }
+ },
+ "dream_league_divisions_montecarlo_2000_pooled": {
+  "Elite Division": {
+   "team_slots": 32000,
+   "distinct_teams": 16,
+   "squad_size": {
+    "n": 32000,
+    "min": 19,
+    "p25": 22,
+    "median": 23.0,
+    "p75": 24,
+    "max": 26,
+    "mean": 22.9
+   },
+   "team_rating": {
+    "n": 32000,
+    "min": 78,
+    "p25": 79,
+    "median": 81.0,
+    "p75": 82,
+    "max": 83,
+    "mean": 80.5
+   },
+   "team_value_total": {
+    "n": 32000,
+    "min": 20085,
+    "p25": 23690,
+    "median": 26350.0,
+    "p75": 28880,
+    "max": 29950,
+    "mean": 25984.4
+   },
+   "player_rating": {
+    "n": 732000,
+    "min": 65,
+    "p25": 77,
+    "median": 80.0,
+    "p75": 82,
+    "max": 93,
+    "mean": 79.5
+   },
+   "player_value": {
+    "n": 732000,
+    "min": 255,
+    "p25": 845,
+    "median": 1112.5,
+    "p75": 1380,
+    "max": 2915,
+    "mean": 1135.9
+   }
+  },
+  "Junior Elite Division": {
+   "team_slots": 32000,
+   "distinct_teams": 35,
+   "squad_size": {
+    "n": 32000,
+    "min": 18,
+    "p25": 20,
+    "median": 23.0,
+    "p75": 25,
+    "max": 27,
+    "mean": 22.6
+   },
+   "team_rating": {
+    "n": 32000,
+    "min": 73,
+    "p25": 75,
+    "median": 76.5,
+    "p75": 77,
+    "max": 78,
+    "mean": 76.2
+   },
+   "team_value_total": {
+    "n": 32000,
+    "min": 13080,
+    "p25": 17035,
+    "median": 17960.0,
+    "p75": 20345,
+    "max": 22505,
+    "mean": 18659.8
+   },
+   "player_rating": {
+    "n": 723437,
+    "min": 55,
+    "p25": 73,
+    "median": 76,
+    "p75": 78,
+    "max": 83,
+    "mean": 75.5
+   },
+   "player_value": {
+    "n": 723437,
+    "min": 105,
+    "p25": 655,
+    "median": 795,
+    "p75": 970,
+    "max": 1500,
+    "mean": 825.4
+   }
+  },
+  "Division 1": {
+   "team_slots": 32000,
+   "distinct_teams": 52,
+   "squad_size": {
+    "n": 32000,
+    "min": 17,
+    "p25": 20,
+    "median": 21.0,
+    "p75": 23,
+    "max": 28,
+    "mean": 21.4
+   },
+   "team_rating": {
+    "n": 32000,
+    "min": 70,
+    "p25": 72,
+    "median": 73.0,
+    "p75": 74,
+    "max": 75,
+    "mean": 73.1
+   },
+   "team_value_total": {
+    "n": 32000,
+    "min": 10590,
+    "p25": 12995,
+    "median": 13570.0,
+    "p75": 14200,
+    "max": 17865,
+    "mean": 13590.3
+   },
+   "player_rating": {
+    "n": 684521,
+    "min": 56,
+    "p25": 71,
+    "median": 73,
+    "p75": 75,
+    "max": 82,
+    "mean": 72.5
+   },
+   "player_value": {
+    "n": 684521,
+    "min": 115,
+    "p25": 495,
+    "median": 620,
+    "p75": 745,
+    "max": 1500,
+    "mean": 635.3
+   }
+  },
+  "Division 2": {
+   "team_slots": 32000,
+   "distinct_teams": 59,
+   "squad_size": {
+    "n": 32000,
+    "min": 17,
+    "p25": 20,
+    "median": 22.0,
+    "p75": 23,
+    "max": 28,
+    "mean": 21.5
+   },
+   "team_rating": {
+    "n": 32000,
+    "min": 68,
+    "p25": 70,
+    "median": 71.0,
+    "p75": 72,
+    "max": 73,
+    "mean": 70.8
+   },
+   "team_value_total": {
+    "n": 32000,
+    "min": 7985,
+    "p25": 10410,
+    "median": 11085.0,
+    "p75": 11920,
+    "max": 16155,
+    "mean": 11246.2
+   },
+   "player_rating": {
+    "n": 687829,
+    "min": 56,
+    "p25": 68,
+    "median": 71,
+    "p75": 73,
+    "max": 82,
+    "mean": 70.4
+   },
+   "player_value": {
+    "n": 687829,
+    "min": 75,
+    "p25": 400,
+    "median": 515,
+    "p75": 620,
+    "max": 1500,
+    "mean": 523.2
+   }
+  },
+  "Division 3": {
+   "team_slots": 32000,
+   "distinct_teams": 54,
+   "squad_size": {
+    "n": 32000,
+    "min": 17,
+    "p25": 19,
+    "median": 20.0,
+    "p75": 21,
+    "max": 28,
+    "mean": 20.4
+   },
+   "team_rating": {
+    "n": 32000,
+    "min": 66,
+    "p25": 68,
+    "median": 68.0,
+    "p75": 69,
+    "max": 71,
+    "mean": 68.5
+   },
+   "team_value_total": {
+    "n": 32000,
+    "min": 5845,
+    "p25": 7915,
+    "median": 8430.0,
+    "p75": 9405,
+    "max": 11935,
+    "mean": 8627.7
+   },
+   "player_rating": {
+    "n": 652771,
+    "min": 54,
+    "p25": 66,
+    "median": 68,
+    "p75": 71,
+    "max": 77,
+    "mean": 68.3
+   },
+   "player_value": {
+    "n": 652771,
+    "min": 75,
+    "p25": 320,
+    "median": 400,
+    "p75": 540,
+    "max": 960,
+    "mean": 422.9
+   }
+  },
+  "Academy Division": {
+   "team_slots": 32000,
+   "distinct_teams": 44,
+   "squad_size": {
+    "n": 32000,
+    "min": 17,
+    "p25": 18,
+    "median": 19.0,
+    "p75": 20,
+    "max": 25,
+    "mean": 19.7
+   },
+   "team_rating": {
+    "n": 32000,
+    "min": 61,
+    "p25": 64,
+    "median": 65.0,
+    "p75": 66,
+    "max": 90,
+    "mean": 66.4
+   },
+   "team_value_total": {
+    "n": 32000,
+    "min": 3370,
+    "p25": 5395,
+    "median": 5940.0,
+    "p75": 6475,
+    "max": 44070,
+    "mean": 8190.3
+   },
+   "player_rating": {
+    "n": 628843,
+    "min": 38,
+    "p25": 63,
+    "median": 65,
+    "p75": 68,
+    "max": 97,
+    "mean": 66.1
+   },
+   "player_value": {
+    "n": 628843,
+    "min": 50,
+    "p25": 230,
+    "median": 285,
+    "p75": 365,
+    "max": 3405,
+    "mean": 416.8
+   }
+  }
+ },
+ "dream_league_fixed": {
+  "always_elite": [
+   "Juventus",
+   "Barcelona",
+   "Manchester C",
+   "R Madrid",
+   "Chelsea",
+   "Manchester U",
+   "Tottenham H",
+   "Paris",
+   "A Madrid ",
+   null,
+   "Liverpool",
+   "I Milan",
+   "Napoli",
+   "Roma",
+   "Monaco",
+   "A Milan"
+  ],
+  "always_junior_elite_or_elite_ranks_16_23": [
+   "Seville",
+   "Everton",
+   "Lazio",
+   "A Bilbao",
+   "Valencia",
+   "Villarreal",
+   "Benfica",
+   "Porto"
+  ],
+  "pool_rank_24_plus_selection_probability": 0.5625
+ },
+ "players_all": {
+  "rating": {
+   "n": 5816,
+   "min": 12,
+   "p25": 66,
+   "median": 70.0,
+   "p75": 74,
+   "max": 97,
+   "mean": 70.1
+  },
+  "value": {
+   "n": 5816,
+   "min": 50,
+   "p25": 320,
+   "median": 495.0,
+   "p75": 705,
+   "max": 3405,
+   "mean": 550.3
+  },
+  "age": {
+   "n": 5816,
+   "min": 6,
+   "p25": 118,
+   "median": 118.0,
+   "p75": 118,
+   "max": 118,
+   "mean": 97.3
+  }
+ },
+ "players_rostered": {
+  "rating": {
+   "n": 4275,
+   "min": 38,
+   "p25": 67,
+   "median": 71,
+   "p75": 74,
+   "max": 97,
+   "mean": 70.6
+  },
+  "value": {
+   "n": 4275,
+   "min": 50,
+   "p25": 325,
+   "median": 495,
+   "p75": 715,
+   "max": 3405,
+   "mean": 576.6
+  },
+  "age": {
+   "n": 4275,
+   "min": 6,
+   "p25": 118,
+   "median": 118,
+   "p75": 118,
+   "max": 118,
+   "mean": 97.6
+  }
+ },
+ "by_gen_pos": {
+  "0": {
+   "players": 576,
+   "rating": {
+    "n": 576,
+    "min": 12,
+    "p25": 67,
+    "median": 70.0,
+    "p75": 73,
+    "max": 94,
+    "mean": 70.5
+   },
+   "value": {
+    "n": 576,
+    "min": 50,
+    "p25": 285,
+    "median": 400.0,
+    "p75": 540,
+    "max": 2330,
+    "mean": 466.0
+   }
+  },
+  "1": {
+   "players": 1944,
+   "rating": {
+    "n": 1944,
+    "min": 48,
+    "p25": 66,
+    "median": 70.0,
+    "p75": 74,
+    "max": 95,
+    "mean": 69.9
+   },
+   "value": {
+    "n": 1944,
+    "min": 75,
+    "p25": 290,
+    "median": 450.0,
+    "p75": 655,
+    "max": 2650,
+    "mean": 495.1
+   }
+  },
+  "2": {
+   "players": 2291,
+   "rating": {
+    "n": 2291,
+    "min": 38,
+    "p25": 66,
+    "median": 70,
+    "p75": 74,
+    "max": 97,
+    "mean": 70.0
+   },
+   "value": {
+    "n": 2291,
+    "min": 100,
+    "p25": 320,
+    "median": 495,
+    "p75": 730,
+    "max": 3355,
+    "mean": 561.8
+   }
+  },
+  "3": {
+   "players": 1005,
+   "rating": {
+    "n": 1005,
+    "min": 52,
+    "p25": 66,
+    "median": 71,
+    "p75": 75,
+    "max": 96,
+    "mean": 70.6
+   },
+   "value": {
+    "n": 1005,
+    "min": 150,
+    "p25": 385,
+    "median": 620,
+    "p75": 880,
+    "max": 3405,
+    "mean": 679.1
+   }
+  }
+ },
+ "age_histogram_all": {
+  "6": 1,
+  "21": 2,
+  "22": 4,
+  "23": 16,
+  "24": 37,
+  "25": 66,
+  "26": 85,
+  "27": 101,
+  "28": 120,
+  "29": 129,
+  "30": 124,
+  "31": 133,
+  "32": 127,
+  "33": 109,
+  "34": 87,
+  "35": 72,
+  "36": 49,
+  "37": 52,
+  "38": 26,
+  "39": 16,
+  "40": 9,
+  "41": 4,
+  "42": 3,
+  "43": 2,
+  "45": 2,
+  "118": 4440
+ },
+ "rating_histogram_all": {
+  "12": 1,
+  "38": 1,
+  "47": 1,
+  "48": 1,
+  "50": 2,
+  "52": 4,
+  "53": 1,
+  "54": 4,
+  "55": 9,
+  "56": 33,
+  "57": 70,
+  "58": 49,
+  "59": 52,
+  "60": 64,
+  "61": 83,
+  "62": 131,
+  "63": 185,
+  "64": 229,
+  "65": 344,
+  "66": 332,
+  "67": 348,
+  "68": 379,
+  "69": 288,
+  "70": 413,
+  "71": 375,
+  "72": 456,
+  "73": 409,
+  "74": 315,
+  "75": 283,
+  "76": 245,
+  "77": 166,
+  "78": 110,
+  "79": 89,
+  "80": 92,
+  "81": 77,
+  "82": 53,
+  "83": 37,
+  "84": 19,
+  "85": 13,
+  "86": 12,
+  "87": 9,
+  "88": 1,
+  "89": 5,
+  "90": 4,
+  "91": 3,
+  "92": 5,
+  "93": 3,
+  "94": 5,
+  "95": 3,
+  "96": 2,
+  "97": 1
+ },
+ "user_team": {
+  "name": "Dream FC",
+  "squad_size": 22,
+  "team_rating": 90,
+  "team_value_total": 44070
+ }
+}

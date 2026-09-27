@@ -1,0 +1,9 @@
+source_dls26_id,target_dls18_id,candidate_dir,candidate_max_position_step,stock_max_position_step,candidate_start_dx,candidate_start_dz,candidate_end_dx,candidate_end_dz,frame_count,sample_interval_ticks
+72,512,DLS18_project/mod/source/sprint_screen/72_to_512_fit_align,497.932,520.97,3.738,0.0,3.738,0.0,9,2
+74,514,DLS18_project/mod/source/sprint_screen/74_to_514_fit_align,516.769,544.461,5.227,0.0,8.357,0.0,9,2
+76,516,DLS18_project/mod/source/sprint_screen/76_to_516_fit_align,476.899,495.678,4.307,0.0,7.637,0.0,10,2
+3100,512,DLS18_project/mod/source/sprint_screen/3100_to_512_fit_align,529.053,520.97,13.17,0.0,13.17,0.0,9,2
+2456,514,DLS18_project/mod/source/sprint_screen/2456_to_514_fit_align,543.348,544.461,13.284,0.0,18.749,0.0,9,2
+2452,516,DLS18_project/mod/source/sprint_screen/2452_to_516_fit_align,459.113,495.678,17.049,0.0,21.928,0.0,10,2
+1578,512,DLS18_project/mod/source/sprint_screen/1578_to_512_fit,435.863,520.97,17.923,394.795,17.923,394.795,9,2
+3098,514,DLS18_project/mod/source/sprint_screen/3098_to_514_fit,426.845,544.461,22.939,754.102,25.638,770.912,9,2

@@ -1,0 +1,26 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Main.dc.html": {
+      "h": 640,
+      "title": "Transfer market prototype (tablet 1024×640)",
+      "w": 1024,
+      "x": 0,
+      "y": 0,
+      "is_interactive": true
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-27T09:19:29.778Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {"view": "focused", "file": "Main.dc.html"},
+  "notes": {},
+  "order": [
+    "Main.dc.html"
+  ],
+  "pages": [],
+  "title": "DLS18 Transfer Market Revamp"
+}

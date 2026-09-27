@@ -1,0 +1,356 @@
+{
+  "status": "local_uninstalled_experiment",
+  "source": {
+    "package": "dls26/decoded_13.430",
+    "sat_decoder": "dls26/decode_sat_13430.py",
+    "database_decoder": "dls26/extract_animdb_13430.py"
+  },
+  "apk": {
+    "path": "DLS18_project/mod/build/DLS18_career_market_v30_dls26_tackle_stumble_append_v15_turns.apk",
+    "bytes": 65886734,
+    "sha256": "830940b2ac231197e2324d6d0d160a05866a25d70f9e1edf6efe387bf35f1ef9"
+  },
+  "animation_package": {
+    "path": "DLS18_project/mod/build/anims_career_market_v30_dls26_tackle_stumble_append_v15_turns.pak",
+    "bytes": 15520095,
+    "sha256": "071f5e86bb95ded3ee22966474d2f7beaa94522e552a25bae53512bdb5a55e42",
+    "kpx_members": 2562,
+    "animdb_records": 2561,
+    "state_category_counts": [
+      94,
+      359,
+      7,
+      36,
+      78,
+      154,
+      43,
+      5,
+      24,
+      12,
+      38,
+      37,
+      604,
+      34,
+      749,
+      216,
+      12,
+      10,
+      27,
+      22
+    ]
+  },
+  "native_library": {
+    "path": "DLS18_project/mod/build/libDLS18_v30_anim_count_2561_experiment.so",
+    "bytes": 7967040,
+    "sha256": "58d7d7726e29752375ce387724f6cbf997f67c065cd8bd5464992271d387fc7e",
+    "animation_load_count": 2561,
+    "cache_capacity": 3840,
+    "nis_sentinel": 32767
+  },
+  "appended_pairs": [
+    {
+      "ids": [
+        2535,
+        2536
+      ],
+      "source_dls26_id": 2308,
+      "source_name": "ANM_TACKLE_FT1303_STANDING_TACKLES_FWD_1_NOEL",
+      "category": 9,
+      "target_layout": 331,
+      "position_alignment": true
+    },
+    {
+      "ids": [
+        2537,
+        2538
+      ],
+      "source_dls26_id": 2408,
+      "source_name": "ANM_STUMBLE_FT1350_STUMBLE_TO_CONTINUE_RUNNING_2_COLIN_LT",
+      "category": 6,
+      "target_layout": 2517,
+      "edge_blend_frames": 4
+    },
+    {
+      "ids": [
+        2539,
+        2540
+      ],
+      "source_dls26_id": 870,
+      "source_name": "ANM_STUMBLE_EXE573_STAND_TO_STUMBLE_BACKWARDS_TO_STAND_LT",
+      "category": 6,
+      "target_layout": 368,
+      "edge_blend_frames": 2
+    },
+    {
+      "ids": [
+        2541,
+        2542
+      ],
+      "source_dls26_id": 864,
+      "source_name": "ANM_STUMBLE_EXE572_STAND_TO_STUMBLE_R_90_TO_STAND___LONGER_STUMBLE_LT",
+      "category": 6,
+      "target_layout": 366,
+      "edge_blend_frames": 2
+    },
+    {
+      "ids": [
+        2543,
+        2544
+      ],
+      "source_dls26_id": 1292,
+      "source_name": "ANM_STUMBLE_FT0653_FT_STUMBLE_0_ALEX",
+      "category": 6,
+      "target_layout": 1257,
+      "edge_blend_frames": 2
+    },
+    {
+      "ids": [
+        2545,
+        2546
+      ],
+      "source_dls26_id": 1294,
+      "source_name": "ANM_STUMBLE_FT0658_FT_STUMBLE_0_ANDY",
+      "category": 6,
+      "target_layout": 1259,
+      "edge_blend_frames": 2
+    },
+    {
+      "ids": [
+        2547,
+        2548
+      ],
+      "source_dls26_id": 3304,
+      "source_name": "ANM_DEEK_FT1638_DEEK_01_DAVID",
+      "category": 19,
+      "target_layout": 2331,
+      "edge_blend_frames": 4,
+      "position_alignment": true
+    },
+    {
+      "ids": [
+        2549,
+        2550
+      ],
+      "source_dls26_id": 3306,
+      "source_name": "ANM_DEEK_FT1638_DEEK_02_DAVID",
+      "category": 19,
+      "target_layout": 2335,
+      "edge_blend_frames": 4,
+      "position_alignment": true
+    },
+    {
+      "ids": [
+        2551,
+        2552
+      ],
+      "source_dls26_id": 3308,
+      "source_name": "ANM_DEEK_FT1638_DEEK_03_DAVID",
+      "category": 19,
+      "target_layout": 2335,
+      "edge_blend_frames": 4,
+      "position_alignment": true
+    },
+    {
+      "ids": [
+        2553,
+        2554
+      ],
+      "source_dls26_id": 3260,
+      "source_name": "ANM_CONTROL_FT1631_CONTROL_DRIBBLE_01_ADAM",
+      "category": 1,
+      "target_layout": 1331,
+      "edge_blend_frames": 4,
+      "position_alignment": true
+    },
+    {
+      "ids": [
+        2555,
+        2556
+      ],
+      "source_dls26_id": 3262,
+      "source_name": "ANM_CONTROL_FT1631_CONTROL_DRIBBLE_02_DAVID",
+      "category": 1,
+      "target_layout": 1333,
+      "edge_blend_frames": 4,
+      "position_alignment": true
+    },
+    {
+      "ids": [
+        2557,
+        2558
+      ],
+      "source_dls26_id": 3264,
+      "source_name": "ANM_CONTROL_FT1632_CONTROL_DRIBBLE_03_DAVID",
+      "category": 1,
+      "target_layout": 1335,
+      "edge_blend_frames": 4,
+      "position_alignment": true
+    },
+    {
+      "ids": [
+        2559,
+        2560
+      ],
+      "source_dls26_id": 3282,
+      "source_name": "ANM_CONTROL_FT1635_CONTROL_SPECIAL_06_DAVID",
+      "category": 1,
+      "target_layout": 1360,
+      "edge_blend_frames": 4,
+      "position_alignment": true
+    }
+  ],
+  "existing_replacements": [
+    331,
+    737,
+    1286
+  ],
+  "verification": "DLS18_project/analysis/verify_animation_append.py --apk DLS18_project/mod/build/DLS18_career_market_v30_dls26_tackle_stumble_append_v15_turns.apk --first-new-id 2535 --last-new-id 2560",
+  "sprint_replacements": [
+    {
+      "slot": 512,
+      "mirror_slot": 513,
+      "source_dls26_id": 72,
+      "source_name": "ANM_LOCO_ET0141_XF0450_SPRINTLOOP",
+      "position_alignment": true,
+      "edge_blend_frames": 0,
+      "candidate_max_position_step": 497.9,
+      "stock_max_position_step": 521.0
+    },
+    {
+      "slot": 514,
+      "mirror_slot": 515,
+      "source_dls26_id": 74,
+      "source_name": "ANM_LOCO_ET0142_XF0450_SPRINTLOOP",
+      "position_alignment": true,
+      "edge_blend_frames": 0,
+      "candidate_max_position_step": 516.8,
+      "stock_max_position_step": 544.5
+    },
+    {
+      "slot": 516,
+      "mirror_slot": 517,
+      "source_dls26_id": 76,
+      "source_name": "ANM_LOCO_ET0143_XF0450_SPRINTLOOP",
+      "position_alignment": true,
+      "edge_blend_frames": 0,
+      "candidate_max_position_step": 476.9,
+      "stock_max_position_step": 495.7
+    }
+  ],
+  "sidestep_replacements": [
+    {
+      "slot": 686,
+      "source_dls26_id": 186,
+      "source_name": "ANM_SIDESTEP_ET0502_EX2001_SIDESTEP_FW",
+      "timing": "fit",
+      "edge_blend_frames": 2,
+      "position_alignment": true,
+      "mirror_slot": null,
+      "candidate_sha256": "967a6cb9a1fb3410e98771e9d56f64ba24133838c0995db703922d9e5bf501b5"
+    },
+    {
+      "slot": 693,
+      "source_dls26_id": 188,
+      "source_name": "ANM_SIDESTEP_ET0507_EX2005_SIDESTEP_180",
+      "timing": "fit",
+      "edge_blend_frames": 2,
+      "position_alignment": true,
+      "mirror_slot": 694,
+      "candidate_sha256": "5a393238da8ef85ea5fc0031edbe3141a8d604d551d272bb12fa48e9c2aa26fb"
+    },
+    {
+      "slot": 695,
+      "source_dls26_id": 190,
+      "source_name": "ANM_SIDESTEP_ET0508_EX2006_SIDESTEPLOW_0",
+      "timing": "fit",
+      "edge_blend_frames": 2,
+      "position_alignment": true,
+      "mirror_slot": null,
+      "candidate_sha256": "1e37c71d65e0a786d045f503525f4423756bcd27363b0ef02a69d4a0bfa09e39"
+    },
+    {
+      "slot": 698,
+      "source_dls26_id": 192,
+      "source_name": "ANM_SIDESTEP_ET0510_EX2008_SIDESTEPLOW_90",
+      "timing": "fit",
+      "edge_blend_frames": 2,
+      "position_alignment": true,
+      "mirror_slot": 699,
+      "candidate_sha256": "40fa7854cd1aa8cfd1b8cc20cbba42eb951ee9db02addddf2783bf44905fa222"
+    },
+    {
+      "slot": 702,
+      "source_dls26_id": 194,
+      "source_name": "ANM_SIDESTEP_ET0512_EX2010_SIDESTEPLOW_180",
+      "timing": "fit",
+      "edge_blend_frames": 2,
+      "position_alignment": true,
+      "mirror_slot": 703,
+      "candidate_sha256": "d157a7dc90954f62309f23477407ba9f37d169dfee3cfa4a530d2c5351148149"
+    }
+  ],
+  "sidestep_screen_csv": "DLS18_project/analysis/dls26_sidestep_screen.csv",
+  "turn_replacements": [
+    {
+      "slot": 13,
+      "source_dls26_id": 510,
+      "source_name": "ANM_TURN_EXE121_STAND_TURN_R_45",
+      "timing": "fit",
+      "edge_blend_frames": 0,
+      "position_alignment": true,
+      "mirror_slot": 14,
+      "candidate_sha256": "6605e009ba832e10d2a8b3b1646c880732aca28480329f44ff7541fa76218802"
+    },
+    {
+      "slot": 15,
+      "source_dls26_id": 514,
+      "source_name": "ANM_TURN_EXE122_STAND_TURN_R_90",
+      "timing": "fit",
+      "edge_blend_frames": 0,
+      "position_alignment": true,
+      "mirror_slot": 16,
+      "candidate_sha256": "44dd4d6dacd22dd1cad90afca79ec7e82f742ca7373f640bd5ed2bd5afb56280"
+    },
+    {
+      "slot": 17,
+      "source_dls26_id": 518,
+      "source_name": "ANM_TURN_EXE123_STAND_TURN_R_135",
+      "timing": "fit",
+      "edge_blend_frames": 0,
+      "position_alignment": true,
+      "mirror_slot": 18,
+      "candidate_sha256": "65ebd2d2029a47473ccef11ce3a0400e3f4324d5e5af9f733fc92e21b1544ce2"
+    },
+    {
+      "slot": 19,
+      "source_dls26_id": 522,
+      "source_name": "ANM_TURN_EXE124_STAND_TURN_R_180",
+      "timing": "fit",
+      "edge_blend_frames": 0,
+      "position_alignment": true,
+      "mirror_slot": 20,
+      "candidate_sha256": "f0b67acb9b4d629c64161776ad7df3f913ee34de6473a8a66a07abd1347ec8ad"
+    },
+    {
+      "slot": 1253,
+      "source_dls26_id": 1288,
+      "source_name": "ANM_TURN_FT0647_FT_TURN_STAND_0_ALEX_R45",
+      "timing": "fit",
+      "edge_blend_frames": 0,
+      "position_alignment": true,
+      "mirror_slot": 1254,
+      "candidate_sha256": "cde41521c467f8182c78e8f70d19c8933cabb49cb7d25764b535114f742fb3ae"
+    },
+    {
+      "slot": 1255,
+      "source_dls26_id": 1290,
+      "source_name": "ANM_TURN_FT0649_FT_TURN_STAND_0_ALEX_R90",
+      "timing": "fit",
+      "edge_blend_frames": 0,
+      "position_alignment": true,
+      "mirror_slot": 1256,
+      "candidate_sha256": "027d1fdfac9911a8b6914bbdc8334c7573e509082d24eb6db7231a9775dcd924"
+    }
+  ],
+  "turn_screen_csv": "DLS18_project/analysis/dls26_turn_screen.csv"
+}

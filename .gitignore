@@ -1,0 +1,37 @@
+# Game files are First Touch Games' copyright and are not redistributed here: bring your own
+# copy of Dream League Soccer 2018 (5.064, armeabi-v7a).
+/original/
+/unpacked/
+/decoded_assets/
+/previews/
+/catalog/
+/mod/source/
+*.apk
+*.so
+*.pak
+*.sat
+*.adb
+*.bms
+mod/career_market/data/dls18_dataset.json
+mod/career_market/tests/dls18.txt
+
+# disassembly listings of the game and vendored third-party code
+/analysis/asm/
+/analysis/vendor/
+
+# signing keys
+/mod/keys/
+*.pem
+*.jks
+*.keystore
+
+# build outputs, logs, caches
+/mod/build/
+/mod/career_market/mod/
+/mod/career_market/D:/
+mod/career_market/tests/harness
+*.log
+*.bin
+__pycache__/
+*.pyc
+*.layout.json

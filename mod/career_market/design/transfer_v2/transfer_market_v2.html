@@ -1,0 +1,663 @@
+<title>Transfer Market v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --ground: #0d221b;
+  --turf: #12302a;
+  --turf-2: #173a32;
+  --turf-3: #1f483e;
+  --line: #2a5549;
+  --chalk: #eef3ec;
+  --chalk-2: #b3c8be;
+  --chalk-3: #86a397;
+  --amber: #f2b233;
+  --amber-ink: #231a05;
+  --sky: #7cc0ff;
+  --bad: #ff8f6b;
+  --good: #8fe0a8;
+  --display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--ground); color: var(--chalk); }
+body { font-family: var(--body); font-size: 14px; padding-inline: 16px; padding-block: 20px 40px; }
+.page { max-width: 1024px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.page-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+.page-head h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: .02em; text-transform: uppercase; text-wrap: balance; }
+.page-head p { margin: 0; color: var(--chalk-2); font-size: 13px; }
+.stage { width: 100%; position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(0,0,0,.45); }
+.screen { width: 1024px; height: 640px; position: absolute; top: 0; left: 0; transform-origin: 0 0; background: var(--turf); display: grid; grid-template-rows: 56px 1fr; overflow: hidden; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* top bar */
+.top { display: flex; align-items: center; gap: 14px; padding: 0 16px 0 8px; background: var(--ground); border-bottom: 1px solid var(--line); }
+.icon-btn { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; border-radius: 10px; color: var(--chalk-2); }
+.icon-btn:hover { background: var(--turf-2); color: var(--chalk); }
+.top h2 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: .04em; text-transform: uppercase; }
+.window { display: flex; align-items: center; gap: 8px; margin-left: 4px; padding: 6px 12px; white-space: nowrap; border-radius: 999px; background: var(--turf-2); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--chalk-2); }
+.window b { color: var(--good); font-weight: 700; }
+.dots { display: flex; gap: 4px; }
+.dots i { width: 8px; height: 8px; border-radius: 2px; background: var(--line); }
+.dots i.on { background: var(--good); }
+.money { margin-left: auto; display: flex; gap: 14px; align-items: center; flex: none; }
+.money div { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.money small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--chalk-3); }
+.money strong { font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+.money .coins strong { color: var(--amber); }
+
+/* layout */
+.body { display: grid; grid-template-columns: 176px 1fr 320px; min-height: 0; }
+.rail { background: var(--ground); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 10px 8px; gap: 2px; min-height: 0; }
+.tab { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--chalk-2); font-weight: 600; text-align: left; }
+.tab:hover { background: var(--turf); color: var(--chalk); }
+.tab[aria-current="page"] { background: var(--turf-2); color: var(--chalk); box-shadow: inset 3px 0 0 var(--amber); }
+.tab svg { flex: none; }
+.tab .count { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--turf-3); font-size: 11px; display: grid; place-items: center; }
+.tab .count.hot { background: var(--amber); color: var(--amber-ink); }
+.pulse { margin-top: auto; padding: 12px 10px 4px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.pulse h3, .eyebrow { margin: 0; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--chalk-3); font-weight: 600; }
+.pulse-row { display: grid; grid-template-columns: 30px 1fr 38px; align-items: center; gap: 6px; font-size: 12px; }
+.pulse-bar { height: 6px; border-radius: 3px; background: var(--turf-2); position: relative; overflow: hidden; }
+.pulse-bar span { position: absolute; top: 0; bottom: 0; left: 50%; }
+.up { color: var(--sky); } .down { color: var(--chalk-3); }
+
+.main { display: grid; grid-template-rows: 52px 1fr; min-height: 0; position: relative; }
+.tools { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.search { flex: 1 1 auto; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border-radius: 9px; background: var(--ground); border: 1px solid var(--line); color: var(--chalk-3); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; color: var(--chalk); }
+.search:focus-within { border-color: var(--amber); }
+.seg { display: flex; background: var(--ground); border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+.seg button { border: 0; background: transparent; height: 30px; padding: 0 9px; border-radius: 7px; font-size: 12px; font-weight: 700; color: var(--chalk-2); letter-spacing: .04em; }
+.seg button[aria-pressed="true"] { background: var(--turf-3); color: var(--chalk); }
+.sort { height: 36px; border-radius: 9px; background: var(--ground); border: 1px solid var(--line); padding: 0 8px; font-size: 12px; }
+.list { overflow-y: auto; padding: 6px 8px 56px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.empty { padding: 40px 20px; text-align: center; color: var(--chalk-3); }
+
+.row { display: flex; align-items: center; border-radius: 10px; }
+.row:hover { background: var(--turf-2); }
+.row.sel { background: var(--turf-3); }
+.row-main { flex: 1; display: grid; grid-template-columns: 44px 1fr 96px 70px; align-items: center; gap: 12px; height: 58px; padding: 0 10px; border: 0; background: transparent; text-align: left; min-width: 0; }
+.badge { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 24px; }
+.who { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.who strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who span { font-size: 12px; color: var(--chalk-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pos { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border-radius: 4px; background: var(--ground); color: var(--chalk); margin-right: 4px; }
+.price { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.price strong { font-family: var(--display); font-size: 19px; font-weight: 700; }
+.price span { font-size: 11px; color: var(--chalk-3); }
+.meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 11px; color: var(--chalk-2); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; background: var(--ground); color: var(--chalk-2); white-space: nowrap; }
+.chip.warn { color: var(--amber); }
+.chip.done { color: var(--good); }
+.star { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--chalk-3); border-radius: 10px; flex: none; }
+.star:hover { color: var(--chalk); }
+.star[aria-pressed="true"] { color: var(--amber); }
+
+.reason { font-size: 12px; color: var(--sky); }
+
+/* detail */
+.detail { background: var(--ground); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.detail-scroll { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.d-head { display: flex; gap: 12px; align-items: center; }
+.d-head .badge { width: 58px; height: 58px; font-size: 32px; border-radius: 12px; }
+.d-head h3 { margin: 0; font-size: 18px; line-height: 1.15; text-wrap: balance; }
+.d-head p { margin: 2px 0 0; font-size: 12px; color: var(--chalk-2); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.fact { background: var(--turf); border-radius: 9px; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.fact small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--chalk-3); }
+.fact strong { font-size: 14px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; }
+.stat { display: grid; grid-template-columns: 1fr 24px; gap: 2px 6px; font-size: 11px; color: var(--chalk-2); align-items: center; }
+.stat b { color: var(--chalk); text-align: right; font-size: 12px; }
+.stat .bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--turf-2); overflow: hidden; }
+.stat .bar span { display: block; height: 100%; background: var(--chalk-2); border-radius: 2px; }
+.meter { display: flex; flex-direction: column; gap: 6px; }
+.meter-top { display: flex; justify-content: space-between; font-size: 12px; }
+.meter-top b { font-weight: 600; }
+.track { height: 8px; border-radius: 4px; background: var(--turf-2); overflow: hidden; }
+.track span { display: block; height: 100%; border-radius: 4px; }
+.rivals { display: flex; flex-wrap: wrap; gap: 6px; }
+.pricebox { background: var(--turf); border-radius: 12px; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pricebox small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--chalk-3); display: block; }
+.pricebox strong { font-family: var(--display); font-size: 26px; font-weight: 800; }
+.pricebox .ask strong { color: var(--amber); }
+.actions { padding: 12px 16px 14px; border-top: 1px solid var(--line); display: flex; gap: 8px; }
+.btn { height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--turf-2); padding: 0 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover { background: var(--turf-3); }
+.btn.primary { flex: 1; background: var(--amber); border-color: var(--amber); color: var(--amber-ink); font-family: var(--display); font-size: 19px; letter-spacing: .04em; text-transform: uppercase; }
+.btn.primary:hover { background: #ffc451; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.small { height: 34px; padding: 0 10px; font-size: 12px; }
+
+/* pulse view in detail */
+.pulse-big { display: flex; flex-direction: column; gap: 10px; }
+.pulse-big .pulse-row { grid-template-columns: 40px 1fr 44px; font-size: 13px; }
+.pulse-big .pulse-bar { height: 10px; border-radius: 5px; }
+.note { font-size: 12px; color: var(--chalk-2); line-height: 1.5; margin: 0; }
+
+/* negotiation sheet */
+.sheet { position: absolute; left: 176px; right: 0; top: 56px; bottom: 0; background: var(--turf); display: grid; grid-template-columns: 1fr 400px; z-index: 5; border-left: 1px solid var(--line); }
+.talk { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
+.talk-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.talk-head .badge { width: 44px; height: 44px; font-size: 24px; }
+.talk-head h3 { margin: 0; font-size: 16px; }
+.talk-head p { margin: 1px 0 0; font-size: 12px; color: var(--chalk-2); }
+.log { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.msg { max-width: 82%; padding: 9px 12px; border-radius: 12px; font-size: 13px; line-height: 1.4; }
+.msg small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--chalk-3); margin-bottom: 2px; }
+.msg.club { background: var(--turf-3); align-self: flex-start; border-top-left-radius: 4px; }
+.msg.you { background: var(--ground); align-self: flex-end; border-top-right-radius: 4px; border: 1px solid var(--line); }
+.msg.rival { background: transparent; border: 1px dashed var(--amber); align-self: flex-start; }
+.msg.result { align-self: stretch; max-width: none; text-align: center; background: var(--ground); border: 1px solid var(--good); color: var(--good); font-weight: 600; }
+.msg.result.bad { border-color: var(--bad); color: var(--bad); }
+.deal { padding: 16px; display: flex; flex-direction: column; gap: 14px; background: var(--ground); overflow-y: auto; }
+.fee-read { display: flex; align-items: baseline; justify-content: space-between; }
+.fee-read strong { font-family: var(--display); font-size: 40px; font-weight: 800; color: var(--amber); line-height: 1; }
+.fee-read span { font-size: 13px; color: var(--chalk-2); }
+input[type="range"] { width: 100%; accent-color: var(--amber); height: 28px; }
+.scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--chalk-3); margin-top: -4px; }
+.years { display: flex; gap: 6px; }
+.years button { flex: 1; height: 38px; border-radius: 9px; border: 1px solid var(--line); background: var(--turf); font-weight: 700; }
+.years button[aria-pressed="true"] { background: var(--turf-3); border-color: var(--chalk-2); }
+.patience { display: flex; gap: 4px; }
+.patience span { flex: 1; height: 8px; border-radius: 4px; background: var(--turf-2); overflow: hidden; position: relative; }
+.patience span i { position: absolute; inset: 0; background: var(--sky); transform-origin: left; }
+.rival-box { border: 1px dashed var(--amber); border-radius: 10px; padding: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+.rival-box b { color: var(--amber); }
+.sheet-actions { display: flex; gap: 8px; margin-top: auto; }
+
+.toast { position: absolute; left: 12px; right: 12px; bottom: 10px; padding: 10px 14px; border-radius: 10px; background: var(--chalk); color: var(--ground); font-weight: 600; font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,.4); display: flex; justify-content: space-between; gap: 12px; }
+.toast[hidden] { display: none; }
+
+/* brief below the screen */
+.brief { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.brief section { background: var(--turf); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.brief h2 { margin: 0; font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+.brief ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; color: var(--chalk-2); line-height: 1.45; font-size: 13px; }
+.brief li b { color: var(--chalk); font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .row, .tab, .btn { transition: background-color .15s ease; }
+  .track span, .stat .bar span { transition: width .3s ease; }
+}
+</style>
+
+<div class="page">
+  <header class="page-head">
+    <h1>Transfer Market v2</h1>
+    <p>Clickable prototype of the new in-game screen · tablet 1024×640 · sample players and clubs · negotiation follows the v36 rules</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="screen" id="screen">
+      <div class="top">
+        <button class="icon-btn" type="button" aria-label="Back to club menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2>Transfer Market</h2>
+        <div class="window" id="window"></div>
+        <div class="money" id="money"></div>
+      </div>
+      <div class="body">
+        <nav class="rail" id="rail" aria-label="Market sections"></nav>
+        <div class="main">
+          <div class="tools" id="tools">
+            <label class="search" for="q">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input id="q" type="search" placeholder="Search players or clubs" autocomplete="off">
+            </label>
+            <div class="seg" id="pos" role="group" aria-label="Position"></div>
+            <label for="sort" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Sort</label>
+            <select class="sort" id="sort">
+              <option value="rating">Best rating</option>
+              <option value="price">Lowest price</option>
+              <option value="fit">Best value</option>
+              <option value="age">Youngest</option>
+            </select>
+          </div>
+          <div class="list" id="list"></div>
+          <div class="toast" id="toast" role="status" hidden></div>
+        </div>
+        <aside class="detail" id="detail" aria-label="Player details"></aside>
+      </div>
+      <div class="sheet" id="sheet" hidden></div>
+    </div>
+  </div>
+
+  <div class="brief">
+    <section>
+      <h2>What replaces what</h2>
+      <ul>
+        <li><b>One screen</b> replaces the stock search table, the footer buttons and the separate market pages.</li>
+        <li><b>Negotiation sheet</b> replaces the stock Sign Player box: fee, contract, the club's replies and a rival's bids in one place.</li>
+        <li><b>Offers and My Squad</b> replace the Sell Player button and the offer inbox.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>What the numbers mean</h2>
+      <ul>
+        <li><b>Asking price</b> is the club's quote. Its hidden accept point lies between its minimum and the ask.</li>
+        <li><b>Patience</b> drains in proportion to how far a bid falls below the club's minimum. Empty means talks end for this window.</li>
+        <li><b>Chance to join</b> falls smoothly with the step down in club size and team strength.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Try it</h2>
+      <ul>
+        <li>Open <b>Scout</b>, pick a player, press <b>Make offer</b> and bid low, then higher.</li>
+        <li>Answer the bids in <b>Offers</b>, or list a player in <b>My Squad</b>.</li>
+        <li>Coins, wage room and squad size update after each deal.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => Math.round(n).toLocaleString("en-US");
+  const r5 = (n) => Math.max(5, Math.round(n / 5) * 5);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  /* ---- sample data (example players and clubs, not the user's save) ---- */
+  const OUT = ["Speed", "Acceleration", "Stamina", "Strength", "Tackling", "Control", "Passing", "Shooting"];
+  const GK = ["Diving", "Reflexes", "Speed", "Strength", "Control", "Passing"];
+  const mk = (id, name, pos, age, rating, club, value, markup, wage, contract, role, join, trend, stats, rivals, reason) => {
+    const ask = r5(value * markup);
+    const res = r5(ask / 1.12);
+    return { id, name, pos, age, rating, club, value, ask, res, u: 0.5 + ((id * 37) % 50) / 100, wage, contract, role, join, trend, stats, rivals: rivals || [], reason: reason || "" };
+  };
+  const market = [
+    mk(1, "Tomás Ferreira", "MID", 24, 81, "Vale Rovers", 1650, 1.12, 240, 2.4, "Key player", 0.78, 6, [72, 76, 84, 61, 58, 83, 86, 70], [{ club: "Kingsport", max: 1990 }], "Lifts your midfield: best MID 74 → 81"),
+    mk(2, "Idris Mensah", "FWD", 22, 78, "Harbor City", 1480, 1.10, 205, 3.1, "Starter", 0.9, 9, [88, 90, 71, 66, 30, 77, 64, 80], [], "Pace your attack lacks: speed 88"),
+    mk(3, "Lukas Brandt", "DEF", 27, 76, "Redmoor United", 1120, 1.08, 170, 1.2, "Starter", 0.95, -2, [68, 64, 79, 84, 81, 60, 66, 42], [], "Fills a gap: you have 5 defenders, target 7"),
+    mk(4, "Mateo Ríos", "GK", 29, 79, "Ashford Athletic", 1260, 1.12, 185, 2.0, "Key player", 0.72, 7, [82, 80, 45, 70, 62, 58], [{ club: "Harbor City", max: 1520 }], "Upgrade in goal: 70 → 79"),
+    mk(5, "Kenji Arai", "MID", 20, 72, "Northbridge FC", 760, 1.06, 110, 4.0, "Rotation", 0.97, 3, [74, 78, 80, 55, 50, 75, 73, 64], []),
+    mk(6, "Sven Holm", "DEF", 31, 74, "Kingsport", 690, 1.0, 150, 0.4, "Surplus", 0.99, -2, [60, 58, 70, 82, 79, 57, 61, 40], [], "Cheap cover: contract ends this season"),
+    mk(7, "Rafael Duarte", "FWD", 26, 84, "Kingsport", 2380, 1.20, 330, 3.4, "Key player", 0.41, 9, [85, 83, 78, 74, 34, 86, 75, 88], [{ club: "Vale Rovers", max: 2720 }, { club: "Harbor City", max: 2600 }]),
+    mk(8, "Ahmed Saleh", "MID", 25, 75, "Ashford Athletic", 980, 1.08, 140, 1.8, "Starter", 0.93, 3, [70, 71, 82, 68, 69, 74, 77, 60], []),
+    mk(9, "Noah Keller", "DEF", 23, 70, "Northbridge FC", 640, 1.04, 95, 3.0, "Rotation", 0.98, -2, [72, 70, 74, 73, 71, 58, 60, 38], []),
+    mk(10, "Diego Salas", "FWD", 30, 73, "Redmoor United", 620, 1.0, 140, 0.8, "Surplus", 0.97, 9, [70, 69, 66, 72, 28, 71, 60, 78], []),
+    mk(11, "Oskar Lind", "GK", 21, 68, "Vale Rovers", 520, 1.04, 80, 3.6, "Rotation", 0.99, 7, [70, 73, 50, 62, 55, 50], []),
+    mk(12, "Yusuf Kaya", "MID", 28, 80, "Harbor City", 1540, 1.12, 225, 2.6, "Key player", 0.68, 3, [69, 72, 86, 70, 72, 82, 81, 66], [{ club: "Ashford Athletic", max: 1800 }])
+  ];
+  const squad = [
+    { id: 101, name: "Carlos Mendes", pos: "FWD", age: 27, rating: 77, value: 1320, contract: 2.0, bid: 1450, bidder: "Northbridge FC" },
+    { id: 102, name: "Evan Price", pos: "MID", age: 24, rating: 74, value: 980, contract: 3.0, bid: 0, bidder: "" },
+    { id: 103, name: "Marco Bellini", pos: "DEF", age: 30, rating: 71, value: 610, contract: 0.6, bid: 640, bidder: "Redmoor United" },
+    { id: 104, name: "Dani Ortega", pos: "GK", age: 26, rating: 70, value: 700, contract: 1.5, bid: 0, bidder: "" },
+    { id: 105, name: "Jonas Weber", pos: "DEF", age: 22, rating: 68, value: 560, contract: 4.0, bid: 0, bidder: "" },
+    { id: 106, name: "Liam Carter", pos: "MID", age: 19, rating: 66, value: 480, contract: 4.2, bid: 520, bidder: "Vale Rovers" }
+  ];
+  const incoming = [
+    { id: 201, player: 101, club: "Northbridge FC", fee: 1450, max: 1620, matches: 2, status: "open" },
+    { id: 202, player: 103, club: "Redmoor United", fee: 640, max: 700, matches: 1, status: "open" },
+    { id: 203, player: 106, club: "Vale Rovers", fee: 520, max: 600, matches: 3, status: "open" }
+  ];
+  const pulse = [{ pos: "GK", d: 7 }, { pos: "DEF", d: -2 }, { pos: "MID", d: 3 }, { pos: "FWD", d: 9 }];
+
+  const S = {
+    tab: "scout", pos: "ALL", sort: "rating", q: "", sel: 1,
+    coins: 7464, wageRoom: 2331, squadMax: 64, squadCount: 25,
+    shortlist: new Set([1, 4, 12]), listed: new Set(),
+    talks: {}, neg: null, toastTimer: 0
+  };
+
+  /* ---- helpers ---- */
+  function badgeStyle(r) {
+    const t = Math.max(0, Math.min(1, (r - 55) / 40));
+    const ink = t > 0.55 ? "var(--amber-ink)" : "var(--chalk)";
+    return `background: color-mix(in oklab, var(--amber) ${Math.round(t * 100)}%, var(--turf-3)); color: ${ink}`;
+  }
+  const joinWord = (j) => j >= 0.9 ? "Keen to move" : j >= 0.7 ? "Open to it" : j >= 0.5 ? "Unsure" : "Reluctant";
+  const seasons = (c) => c < 1 ? "ends this season" : `${c.toFixed(1)} seasons`;
+  const byId = (id) => market.find((p) => p.id === id);
+  function talk(p) {
+    if (!S.talks[p.id]) S.talks[p.id] = { patience: 3000, standing: p.ask, status: "open", rivalBid: p.rivals[0] ? r5(p.ask * 0.92) : 0, rivalOut: false, log: [{ who: "club", text: `Our asking price for ${p.name.split(" ")[0]} is ${fmt(p.ask)}.` }] };
+    return S.talks[p.id];
+  }
+  function toast(text) {
+    const t = $("toast");
+    t.innerHTML = `<span>${esc(text)}</span>`;
+    t.hidden = false;
+    clearTimeout(S.toastTimer);
+    S.toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+  }
+
+  /* ---- top bar ---- */
+  function renderTop() {
+    const left = 3, total = 5;
+    $("window").innerHTML = `<b>Window open</b><span class="num">${left} matches left</span><span class="dots" aria-hidden="true">${Array.from({ length: total }, (_, i) => `<i class="${i < left ? "on" : ""}"></i>`).join("")}</span>`;
+    $("money").innerHTML = `
+      <div class="coins"><small>Coins</small><strong class="num">${fmt(S.coins)}</strong></div>
+      <div><small>Wage room</small><strong class="num">${fmt(S.wageRoom)}</strong></div>
+      <div><small>Squad</small><strong class="num">${S.squadCount}/${S.squadMax}</strong></div>`;
+  }
+
+  /* ---- rail ---- */
+  const ICONS = {
+    scout: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    shortlist: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+    foryou: '<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="5"/>',
+    offers: '<path d="M4 4h16v12H7l-3 3z"/>',
+    squad: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14.8c1.8.8 3 2.6 3.5 5.2"/>'
+  };
+  function renderRail() {
+    const openOffers = incoming.filter((o) => o.status === "open").length;
+    const tabs = [
+      ["scout", "Scout", market.length, false],
+      ["shortlist", "Shortlist", S.shortlist.size, false],
+      ["foryou", "For You", market.filter((p) => p.reason).length, false],
+      ["offers", "Offers", openOffers, openOffers > 0],
+      ["squad", "My Squad", squad.length, false]
+    ];
+    $("rail").innerHTML = tabs.map(([id, label, n, hot]) => `
+      <button class="tab" type="button" data-tab="${id}" ${S.tab === id ? 'aria-current="page"' : ""}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[id]}</svg>
+        ${label}<span class="count ${hot ? "hot" : ""} num">${n}</span>
+      </button>`).join("") + `
+      <div class="pulse">
+        <h3>Market pulse</h3>
+        ${pulse.map((m) => `<div class="pulse-row"><span>${m.pos}</span><span class="pulse-bar"><span style="${m.d >= 0 ? `left:50%;width:${m.d * 4}%;background:var(--sky)` : `left:${50 + m.d * 4}%;width:${-m.d * 4}%;background:var(--chalk-3)`}"></span></span><span class="num ${m.d >= 0 ? "up" : "down"}">${m.d > 0 ? "+" : ""}${m.d}%</span></div>`).join("")}
+      </div>`;
+  }
+
+  /* ---- tools ---- */
+  function renderTools() {
+    const show = S.tab === "scout" || S.tab === "shortlist" || S.tab === "foryou";
+    $("tools").style.visibility = show ? "visible" : "hidden";
+    $("pos").innerHTML = ["ALL", "GK", "DEF", "MID", "FWD"].map((p) => `<button type="button" data-pos="${p}" aria-pressed="${S.pos === p}">${p === "ALL" ? "All" : p}</button>`).join("");
+  }
+
+  /* ---- list ---- */
+  function filtered() {
+    let xs = market.slice();
+    if (S.tab === "shortlist") xs = xs.filter((p) => S.shortlist.has(p.id));
+    if (S.tab === "foryou") xs = xs.filter((p) => p.reason);
+    if (S.pos !== "ALL") xs = xs.filter((p) => p.pos === S.pos);
+    const q = S.q.trim().toLowerCase();
+    if (q) xs = xs.filter((p) => p.name.toLowerCase().includes(q) || p.club.toLowerCase().includes(q));
+    const k = { rating: (a, b) => b.rating - a.rating, price: (a, b) => a.ask - b.ask, fit: (a, b) => (b.rating / b.ask) - (a.rating / a.ask), age: (a, b) => a.age - b.age }[S.sort];
+    return xs.sort(k);
+  }
+  function statusChip(p) {
+    const t = S.talks[p.id];
+    if (!t) return p.rivals.length ? `<span class="chip warn">${p.rivals.length} rival${p.rivals.length > 1 ? "s" : ""}</span>` : "";
+    if (t.status === "signed") return `<span class="chip done">Signed</span>`;
+    if (t.status === "agreed") return `<span class="chip done">Fee agreed</span>`;
+    if (t.status === "ended") return `<span class="chip">Talks ended</span>`;
+    return `<span class="chip warn">In talks</span>`;
+  }
+  function marketRow(p) {
+    const star = S.shortlist.has(p.id);
+    const trend = p.trend >= 0 ? `<span class="up">▲ ${p.trend}%</span>` : `<span class="down">▼ ${-p.trend}%</span>`;
+    return `<div class="row ${S.sel === p.id ? "sel" : ""}">
+      <button class="row-main" type="button" data-sel="${p.id}">
+        <span class="badge num" style="${badgeStyle(p.rating)}">${p.rating}</span>
+        <span class="who"><strong>${esc(p.name)}</strong><span><span class="pos">${p.pos}</span>${p.age} · ${esc(p.club)}</span>${S.tab === "foryou" ? `<span class="reason">${esc(p.reason)}</span>` : ""}</span>
+        <span class="price"><strong class="num">${fmt(p.ask)}</strong><span class="num">value ${fmt(p.value)}</span></span>
+        <span class="meta">${trend}${statusChip(p)}</span>
+      </button>
+      <button class="star" type="button" data-star="${p.id}" aria-pressed="${star}" aria-label="${star ? "Remove from" : "Add to"} shortlist: ${esc(p.name)}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="${star ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linejoin="round">${ICONS.shortlist}</svg>
+      </button>
+    </div>`;
+  }
+  function renderList() {
+    const el = $("list");
+    if (S.tab === "offers") {
+      el.innerHTML = incoming.map((o) => {
+        const p = squad.find((s) => s.id === o.player);
+        const pct = Math.round((o.fee / p.value) * 100);
+        const done = o.status !== "open";
+        const statusText = { accepted: "Sold", rejected: "Rejected", countered: "Waiting for reply", final: `Final offer ${fmt(o.fee)}` }[o.status] || "";
+        return `<div class="row" style="padding:8px 10px;gap:12px">
+          <span class="badge num" style="${badgeStyle(p.rating)}">${p.rating}</span>
+          <span class="who" style="flex:1"><strong>${esc(p.name)}</strong><span>${esc(o.club)} bid <b class="num" style="color:var(--chalk)">${fmt(o.fee)}</b> · ${pct}% of value · expires in ${o.matches} match${o.matches > 1 ? "es" : ""}</span></span>
+          ${o.status === "open" || o.status === "final" ? `
+            <button class="btn small" type="button" data-offer="${o.id}" data-act="accept">Accept</button>
+            ${o.status === "open" ? `<button class="btn small" type="button" data-offer="${o.id}" data-act="counter">Ask ${fmt(r5(o.fee * 1.1))}</button>` : ""}
+            <button class="btn small" type="button" data-offer="${o.id}" data-act="reject">Reject</button>` : `<span class="chip ${o.status === "accepted" ? "done" : ""}">${statusText}</span>`}
+        </div>`;
+      }).join("") || `<p class="empty">No bids for your players right now.</p>`;
+      return;
+    }
+    if (S.tab === "squad") {
+      el.innerHTML = squad.map((p) => {
+        const listed = S.listed.has(p.id);
+        return `<div class="row" style="padding:8px 10px;gap:12px">
+          <span class="badge num" style="${badgeStyle(p.rating)}">${p.rating}</span>
+          <span class="who" style="flex:1"><strong>${esc(p.name)}</strong><span><span class="pos">${p.pos}</span>${p.age} · value ${fmt(p.value)} · contract ${seasons(p.contract)}</span></span>
+          <span class="meta">${p.bid ? `<span class="chip warn">Best bid ${fmt(p.bid)}</span>` : `<span class="chip">No bids</span>`}</span>
+          <button class="btn small" type="button" data-list="${p.id}" aria-pressed="${listed}">${listed ? "Listed ✓" : "List for sale"}</button>
+        </div>`;
+      }).join("");
+      return;
+    }
+    const xs = filtered();
+    el.innerHTML = xs.map(marketRow).join("") || `<p class="empty">${S.tab === "shortlist" ? "Star players to keep them here." : "No players match. Clear the search or pick another position."}</p>`;
+  }
+
+  /* ---- detail ---- */
+  function renderDetail() {
+    const el = $("detail");
+    const p = byId(S.sel);
+    if (!p || S.tab === "offers" || S.tab === "squad") {
+      el.innerHTML = `<div class="detail-scroll">
+        <p class="eyebrow">Market pulse</p>
+        <div class="pulse-big">${pulse.map((m) => `<div class="pulse-row"><b>${m.pos}</b><span class="pulse-bar"><span style="${m.d >= 0 ? `left:50%;width:${m.d * 5}%;background:var(--sky)` : `left:${50 + m.d * 5}%;width:${-m.d * 5}%;background:var(--chalk-3)`}"></span></span><span class="num ${m.d >= 0 ? "up" : "down"}">${m.d > 0 ? "+" : ""}${m.d}%</span></div>`).join("")}</div>
+        <p class="note">Prices follow supply and demand at each position and rating. Forwards are scarce this window, so their asking prices are up 9%.</p>
+        <p class="eyebrow">This window</p>
+        <p class="note">${incoming.filter((o) => o.status === "open").length} open bids for your players. Bids you leave unanswered expire when the matches shown run out.</p>
+      </div>`;
+      return;
+    }
+    const t = S.talks[p.id];
+    const labels = p.pos === "GK" ? GK : OUT;
+    const joinPct = Math.round(p.join * 100);
+    const joinColor = p.join >= 0.7 ? "var(--good)" : p.join >= 0.5 ? "var(--amber)" : "var(--bad)";
+    const signed = t && t.status === "signed";
+    const ended = t && t.status === "ended";
+    el.innerHTML = `<div class="detail-scroll">
+      <div class="d-head">
+        <span class="badge num" style="${badgeStyle(p.rating)}">${p.rating}</span>
+        <div><h3>${esc(p.name)}</h3><p><span class="pos">${p.pos}</span>${p.age} yrs · ${esc(p.club)}</p></div>
+      </div>
+      <div class="facts">
+        <div class="fact"><small>Role</small><strong>${p.role}</strong></div>
+        <div class="fact"><small>Contract</small><strong>${seasons(p.contract)}</strong></div>
+        <div class="fact"><small>Wage</small><strong class="num">${fmt(p.wage)}</strong></div>
+      </div>
+      <div class="stats">${labels.map((l, i) => `<div class="stat"><span>${l}</span><b class="num">${p.stats[i]}</b><span class="bar"><span style="width:${p.stats[i]}%"></span></span></div>`).join("")}</div>
+      <div class="meter">
+        <div class="meter-top"><b>Chance he joins</b><span class="num">${joinWord(p.join)} · ${joinPct}%</span></div>
+        <div class="track"><span style="width:${joinPct}%;background:${joinColor}"></span></div>
+      </div>
+      ${p.rivals.length ? `<div class="meter"><div class="meter-top"><b>Also interested</b></div><div class="rivals">${p.rivals.map((r) => `<span class="chip warn">${esc(r.club)}</span>`).join("")}</div></div>` : ""}
+      <div class="pricebox">
+        <div class="ask"><small>Asking price</small><strong class="num">${fmt(p.ask)}</strong></div>
+        <div><small>Market value</small><strong class="num">${fmt(p.value)}</strong></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" type="button" data-negotiate="${p.id}" ${signed || ended ? "disabled" : ""}>${signed ? "Signed" : ended ? "Talks ended" : t ? (t.status === "agreed" ? "Sign player" : "Continue talks") : "Make offer"}</button>
+      <button class="btn" type="button" data-star="${p.id}" aria-pressed="${S.shortlist.has(p.id)}">${S.shortlist.has(p.id) ? "Shortlisted" : "Shortlist"}</button>
+    </div>`;
+  }
+
+  /* ---- negotiation sheet ---- */
+  function renderSheet() {
+    const el = $("sheet");
+    if (!S.neg) { el.hidden = true; return; }
+    const p = byId(S.neg.id), t = talk(p);
+    const pct = Math.round((S.neg.fee / p.ask) * 100);
+    const wage = Math.round(p.wage * (1 + (3 - S.neg.years) * 0.04));
+    const segs = [0, 1, 2].map((i) => Math.max(0, Math.min(1, (t.patience - i * 1000) / 1000)));
+    const open = t.status === "open";
+    const afford = S.neg.fee <= S.coins;
+    el.hidden = false;
+    el.innerHTML = `
+      <div class="talk">
+        <div class="talk-head">
+          <span class="badge num" style="${badgeStyle(p.rating)}">${p.rating}</span>
+          <div style="flex:1"><h3>${esc(p.name)}</h3><p>Talks with ${esc(p.club)} · asking ${fmt(p.ask)}</p></div>
+          <button class="icon-btn" type="button" data-close aria-label="Close negotiation">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="log" id="log">${t.log.map((m) => `<div class="msg ${m.who}${m.bad ? " bad" : ""}">${m.who === "result" ? "" : `<small>${m.who === "club" ? esc(p.club) : m.who === "rival" ? "Rival bid" : "You"}</small>`}${esc(m.text)}</div>`).join("")}</div>
+      </div>
+      <div class="deal">
+        <p class="eyebrow">Your fee offer</p>
+        <div class="fee-read"><strong class="num">${fmt(S.neg.fee)}</strong><span class="num">${pct}% of asking</span></div>
+        <div>
+          <label for="fee" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Fee offer</label>
+          <input id="fee" type="range" min="${r5(p.ask * 0.5)}" max="${r5(p.ask * 1.3)}" step="5" value="${S.neg.fee}" ${open ? "" : "disabled"}>
+          <div class="scale num"><span>${fmt(r5(p.ask * 0.5))}</span><span>asking ${fmt(p.ask)}</span><span>${fmt(r5(p.ask * 1.3))}</span></div>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:6px">Contract length</p>
+          <div class="years">${[1, 2, 3, 4, 5].map((y) => `<button type="button" data-years="${y}" aria-pressed="${S.neg.years === y}" ${open ? "" : "disabled"}>${y} yr</button>`).join("")}</div>
+          <p class="note" style="margin-top:6px">He asks <b class="num" style="color:var(--chalk)">${fmt(wage)}</b> a season. Longer contracts lower the wage a little.</p>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:6px">Club's patience</p>
+          <div class="patience" aria-label="Patience ${Math.round(t.patience / 30)} percent">${segs.map((s) => `<span><i style="transform:scaleX(${s})"></i></span>`).join("")}</div>
+        </div>
+        ${p.rivals.length && !t.rivalOut && t.status === "open" ? `<div class="rival-box"><span><b>${esc(p.rivals[0].club)}</b> is bidding too.</span><span class="num">Their current bid: <b>${fmt(t.rivalBid)}</b>. Beat it by 5% to stay ahead.</span></div>` : ""}
+        <div class="sheet-actions">
+          ${t.status === "agreed"
+            ? `<button class="btn primary" type="button" data-sign ${S.coins >= t.fee ? "" : "disabled"}>Sign for ${fmt(t.fee)}</button>`
+            : `<button class="btn primary" type="button" data-submit ${open && afford ? "" : "disabled"}>${!open ? (t.status === "signed" ? "Signed" : "Talks ended") : afford ? "Submit offer" : "Not enough coins"}</button>`}
+          <button class="btn" type="button" data-close>Leave</button>
+        </div>
+      </div>`;
+    const log = $("log");
+    log.scrollTop = log.scrollHeight;
+  }
+
+  /* v36 seller: hidden accept point between the minimum and the ask, smooth counters, patience cost
+     proportional to the shortfall under the minimum (one strike at 80 %). */
+  function submit() {
+    const p = byId(S.neg.id), t = talk(p), amount = S.neg.fee;
+    t.log.push({ who: "you", text: `We offer ${fmt(amount)} on a ${S.neg.years}-year deal.` });
+    if (p.rivals.length && !t.rivalOut) {
+      const rival = p.rivals[0];
+      if (amount > rival.max) {
+        t.rivalOut = true;
+        t.log.push({ who: "rival", text: `${rival.club} pulled out. They will not go past ${fmt(rival.max)}.` });
+      } else if (amount >= t.rivalBid * 1.05) {
+        t.rivalBid = Math.min(rival.max, r5(amount * 1.05));
+        t.log.push({ who: "rival", text: `${rival.club} raised their bid to ${fmt(t.rivalBid)}.` });
+        t.standing = Math.max(p.ask, r5(t.rivalBid * 1.05));
+        t.log.push({ who: "club", text: `We have a better offer. Match ${fmt(t.standing)} and he is yours.` });
+        return after();
+      } else {
+        t.standing = Math.max(p.ask, r5(t.rivalBid * 1.05));
+        t.log.push({ who: "club", text: `${rival.club} already offers ${fmt(t.rivalBid)}. We want ${fmt(t.standing)}.` });
+        return after();
+      }
+    }
+    const acceptAt = p.res + (p.ask - p.res) * p.u;
+    if (amount >= acceptAt || amount >= t.standing) {
+      t.status = "agreed"; t.fee = amount;
+      t.log.push({ who: "club", text: `Deal. We accept ${fmt(amount)}.` });
+      t.log.push({ who: "result", text: `Fee agreed: ${fmt(amount)}. Sign him to complete the transfer.` });
+    } else if (amount >= p.res) {
+      const counter = r5((amount + t.standing) / 2);
+      if (counter <= amount) { t.status = "agreed"; t.fee = amount; t.log.push({ who: "club", text: `Fine, ${fmt(amount)}.` }); }
+      else { t.standing = counter; t.log.push({ who: "club", text: `Close. We can do ${fmt(counter)}.` }); }
+    } else {
+      const shortfall = 1 - amount / p.res;
+      const soft = 1 - Math.min(1, shortfall / 0.2);
+      t.standing = Math.max(p.res, r5(t.standing - (t.standing - p.res) * soft / 4));
+      t.patience -= Math.round(shortfall / 0.2 * 1000);
+      if (t.patience <= 0) {
+        t.patience = 0; t.status = "ended";
+        t.log.push({ who: "club", text: "We are wasting each other's time. Talks are over for this window." });
+        t.log.push({ who: "result", bad: true, text: p.rivals.length && !t.rivalOut ? `${p.rivals[0].club} signs him instead.` : "Talks ended." });
+      } else {
+        t.log.push({ who: "club", text: soft > 0 ? `Too low. We could come down to ${fmt(t.standing)}.` : `That is not a serious offer. Our price is ${fmt(t.standing)}.` });
+      }
+    }
+    after();
+  }
+  function after() { renderSheet(); renderList(); renderDetail(); }
+
+  function sign() {
+    const p = byId(S.neg.id), t = talk(p);
+    const wage = Math.round(p.wage * (1 + (3 - S.neg.years) * 0.04));
+    S.coins -= t.fee; S.wageRoom -= wage; S.squadCount += 1;
+    t.status = "signed";
+    t.log.push({ who: "result", text: `${p.name} signed for ${fmt(t.fee)} on ${S.neg.years} years at ${fmt(wage)} a season.` });
+    squad.unshift({ id: 300 + p.id, name: p.name, pos: p.pos, age: p.age, rating: p.rating, value: p.value, contract: S.neg.years, bid: 0, bidder: "" });
+    toast(`${p.name} joins your club.`);
+    renderAll();
+  }
+
+  function answerOffer(id, act) {
+    const o = incoming.find((x) => x.id === id);
+    const p = squad.find((s) => s.id === o.player);
+    if (act === "accept") {
+      o.status = "accepted"; S.coins += o.fee; S.squadCount -= 1;
+      squad.splice(squad.indexOf(p), 1);
+      toast(`${p.name} sold to ${o.club} for ${fmt(o.fee)}.`);
+    } else if (act === "reject") {
+      o.status = "rejected"; toast(`You turned down ${o.club}.`);
+    } else {
+      const ask = r5(o.fee * 1.1);
+      if (ask <= o.max) { o.fee = ask; o.status = "accepted"; S.coins += o.fee; S.squadCount -= 1; squad.splice(squad.indexOf(p), 1); toast(`${o.club} agreed to ${fmt(ask)}. ${p.name} is sold.`); }
+      else { o.fee = o.max; o.status = "final"; toast(`${o.club} can only go to ${fmt(o.max)}. Final offer.`); }
+    }
+    renderAll();
+  }
+
+  function renderAll() { renderTop(); renderRail(); renderTools(); renderList(); renderDetail(); renderSheet(); }
+
+  /* ---- events ---- */
+  $("screen").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    const d = b.dataset;
+    if (d.tab) { S.tab = d.tab; S.neg = null; renderAll(); }
+    else if (d.pos) { S.pos = d.pos; renderTools(); renderList(); }
+    else if (d.sel) { S.sel = +d.sel; renderList(); renderDetail(); }
+    else if (d.star) { const id = +d.star; S.shortlist.has(id) ? S.shortlist.delete(id) : S.shortlist.add(id); renderRail(); renderList(); renderDetail(); }
+    else if (d.negotiate) { const p = byId(+d.negotiate); const t = talk(p); S.neg = { id: p.id, fee: t.status === "agreed" ? t.fee : r5(p.ask * 0.85), years: 3 }; renderSheet(); }
+    else if (d.years) { S.neg.years = +d.years; renderSheet(); }
+    else if ("submit" in d) submit();
+    else if ("sign" in d) sign();
+    else if ("close" in d) { S.neg = null; renderSheet(); renderDetail(); }
+    else if (d.offer) answerOffer(+d.offer, d.act);
+    else if (d.list) { const id = +d.list; S.listed.has(id) ? S.listed.delete(id) : S.listed.add(id); renderList(); }
+  });
+  $("screen").addEventListener("input", (e) => {
+    if (e.target.id === "fee") {
+      S.neg.fee = +e.target.value;
+      const p = byId(S.neg.id);
+      const read = e.target.closest(".deal").querySelector(".fee-read");
+      read.innerHTML = `<strong class="num">${fmt(S.neg.fee)}</strong><span class="num">${Math.round(S.neg.fee / p.ask * 100)}% of asking</span>`;
+      const btn = e.target.closest(".deal").querySelector("[data-submit]");
+      if (btn) { const ok = S.neg.fee <= S.coins; btn.disabled = !ok; btn.textContent = ok ? "Submit offer" : "Not enough coins"; }
+    } else if (e.target.id === "q") { S.q = e.target.value; renderList(); }
+  });
+  $("sort").addEventListener("change", (e) => { S.sort = e.target.value; renderList(); });
+
+  /* ---- fit the 1024×640 game screen to the page width ---- */
+  function fit() {
+    const w = $("stage").clientWidth;
+    const k = Math.min(1, w / 1024);
+    $("screen").style.transform = `scale(${k})`;
+    $("stage").style.height = `${640 * k}px`;
+  }
+  window.addEventListener("resize", fit);
+  renderAll();
+  fit();
+})();
+</script>

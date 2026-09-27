@@ -1,0 +1,129 @@
+=== seed 1
+links=232
+  season 0 squads: size min/med/max=16/21/27 below_pos_min=8 one_gk=4 | strength top10=82 bottom10=63 (start 82/63) median=72 | value gini=0.253
+  user: rep=1 size=23 strength=58 value=3110 cash=918 budget=918 fee_room=918 wage_room=865 revenue=743
+season 0: transfers=137 buyers=121/171 fee/value=101% avg_cash=3655 avg_budget=1272 wage/revenue=63% below_reserve=0
+  season 1 squads: size min/med/max=17/21/25 below_pos_min=3 one_gk=3 | strength top10=82 bottom10=64 (start 82/63) median=73 | value gini=0.233
+  user: rep=2 size=25 strength=60 value=3870 cash=384 budget=384 fee_room=384 wage_room=316 revenue=922
+season 1: transfers=130 buyers=121/171 fee/value=94% avg_cash=4090 avg_budget=1647 wage/revenue=63% below_reserve=0
+  season 2 squads: size min/med/max=18/20/25 below_pos_min=1 one_gk=1 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.221
+  user: rep=1 size=26 strength=61 value=4160 cash=374 budget=374 fee_room=374 wage_room=301 revenue=995
+season 2: transfers=127 buyers=116/171 fee/value=95% avg_cash=4386 avg_budget=1845 wage/revenue=64% below_reserve=0
+  season 3 squads: size min/med/max=19/20/26 below_pos_min=1 one_gk=1 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.213
+  user: rep=1 size=28 strength=61 value=4455 cash=359 budget=359 fee_room=359 wage_room=281 revenue=1065
+season 3: transfers=90 buyers=86/171 fee/value=94% avg_cash=4592 avg_budget=2008 wage/revenue=65% below_reserve=0
+  season 4 squads: size min/med/max=18/20/26 below_pos_min=2 one_gk=2 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.206
+  user: rep=1 size=29 strength=61 value=4710 cash=345 budget=345 fee_room=345 wage_room=262 revenue=1126
+season 4: transfers=86 buyers=82/171 fee/value=93% avg_cash=4747 avg_budget=2080 wage/revenue=65% below_reserve=0
+  season 5 squads: size min/med/max=18/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.202
+  user: rep=1 size=30 strength=62 value=4915 cash=380 budget=380 fee_room=380 wage_room=293 revenue=1175
+season 5: transfers=62 buyers=62/171 fee/value=96% avg_cash=4850 avg_budget=2155 wage/revenue=65% below_reserve=0
+  season 6 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.200
+  user: rep=1 size=30 strength=62 value=4915 cash=620 budget=620 fee_room=620 wage_room=533 revenue=1175
+season 6: transfers=68 buyers=63/171 fee/value=96% avg_cash=4921 avg_budget=2171 wage/revenue=65% below_reserve=0
+  season 7 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.200
+  user: rep=1 size=30 strength=62 value=4915 cash=860 budget=860 fee_room=860 wage_room=773 revenue=1175
+season 7: transfers=60 buyers=57/171 fee/value=106% avg_cash=4964 avg_budget=2184 wage/revenue=65% below_reserve=0
+  season 8 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.199
+  user: rep=1 size=30 strength=62 value=4915 cash=1100 budget=1100 fee_room=1100 wage_room=1013 revenue=1175
+season 8: transfers=61 buyers=58/171 fee/value=104% avg_cash=4992 avg_budget=2195 wage/revenue=64% below_reserve=0
+  season 9 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.199
+  user: rep=1 size=30 strength=62 value=4915 cash=1340 budget=1340 fee_room=1340 wage_room=1253 revenue=1175
+season 9: transfers=53 buyers=51/171 fee/value=105% avg_cash=5007 avg_budget=2217 wage/revenue=64% below_reserve=0
+  season 10 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=67 (start 82/63) median=73 | value gini=0.198
+  user: rep=1 size=30 strength=62 value=4915 cash=1580 budget=1580 fee_room=1580 wage_room=1493 revenue=1175
+season 10: transfers=55 buyers=52/171 fee/value=99% avg_cash=5015 avg_budget=2218 wage/revenue=64% below_reserve=0
+  season 11 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=67 (start 82/63) median=73 | value gini=0.198
+  user: rep=1 size=30 strength=62 value=4915 cash=1820 budget=1820 fee_room=1820 wage_room=1733 revenue=1175
+season 11: transfers=37 buyers=35/171 fee/value=108% avg_cash=5022 avg_budget=2239 wage/revenue=64% below_reserve=0
+transfers=966 user: bids=114 buys=11 sales=0 | calc_links=101 sign=11 sell=0 verify=1028 simple_regen=65 saves=480
+digest=94b0c4925b59f5cb
+api_digest=3039b216d017e9ee
+save block bytes=340744
+violations=0
+=== seed 2
+links=232
+  season 0 squads: size min/med/max=16/21/27 below_pos_min=6 one_gk=3 | strength top10=82 bottom10=63 (start 82/63) median=72 | value gini=0.253
+  user: rep=1 size=23 strength=59 value=3315 cash=713 budget=713 fee_room=713 wage_room=654 revenue=792
+season 0: transfers=137 buyers=121/171 fee/value=101% avg_cash=3654 avg_budget=1272 wage/revenue=63% below_reserve=0
+  season 1 squads: size min/med/max=17/21/25 below_pos_min=2 one_gk=2 | strength top10=82 bottom10=64 (start 82/63) median=73 | value gini=0.234
+  user: rep=2 size=26 strength=60 value=3815 cash=448 budget=448 fee_room=448 wage_room=380 revenue=909
+season 1: transfers=135 buyers=126/171 fee/value=95% avg_cash=4088 avg_budget=1642 wage/revenue=63% below_reserve=0
+  season 2 squads: size min/med/max=18/20/25 below_pos_min=2 one_gk=2 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.221
+  user: rep=2 size=28 strength=61 value=4220 cash=323 budget=323 fee_room=323 wage_room=247 revenue=1006
+season 2: transfers=126 buyers=117/171 fee/value=95% avg_cash=4386 avg_budget=1845 wage/revenue=64% below_reserve=0
+  season 3 squads: size min/med/max=19/20/26 below_pos_min=2 one_gk=2 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.214
+  user: rep=2 size=29 strength=61 value=4505 cash=285 budget=285 fee_room=285 wage_room=204 revenue=1073
+season 3: transfers=91 buyers=89/171 fee/value=97% avg_cash=4602 avg_budget=1999 wage/revenue=65% below_reserve=0
+  season 4 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.207
+  user: rep=1 size=30 strength=62 value=4710 cash=320 budget=320 fee_room=320 wage_room=235 revenue=1126
+season 4: transfers=77 buyers=76/171 fee/value=96% avg_cash=4741 avg_budget=2086 wage/revenue=65% below_reserve=0
+  season 5 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.204
+  user: rep=1 size=30 strength=62 value=4710 cash=560 budget=560 fee_room=560 wage_room=475 revenue=1126
+season 5: transfers=66 buyers=65/171 fee/value=98% avg_cash=4846 avg_budget=2147 wage/revenue=65% below_reserve=0
+  season 6 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.203
+  user: rep=1 size=30 strength=62 value=4710 cash=800 budget=800 fee_room=800 wage_room=715 revenue=1126
+season 6: transfers=55 buyers=55/171 fee/value=100% avg_cash=4918 avg_budget=2187 wage/revenue=65% below_reserve=0
+  season 7 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.201
+  user: rep=1 size=30 strength=62 value=4710 cash=1040 budget=1040 fee_room=1040 wage_room=955 revenue=1126
+season 7: transfers=53 buyers=53/171 fee/value=104% avg_cash=4961 avg_budget=2197 wage/revenue=65% below_reserve=0
+  season 8 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.200
+  user: rep=1 size=30 strength=62 value=4710 cash=1280 budget=1280 fee_room=1280 wage_room=1195 revenue=1126
+season 8: transfers=56 buyers=52/171 fee/value=102% avg_cash=4989 avg_budget=2209 wage/revenue=64% below_reserve=0
+  season 9 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.199
+  user: rep=1 size=30 strength=62 value=4710 cash=1520 budget=1520 fee_room=1520 wage_room=1435 revenue=1126
+season 9: transfers=61 buyers=55/171 fee/value=98% avg_cash=5006 avg_budget=2209 wage/revenue=64% below_reserve=0
+  season 10 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.199
+  user: rep=1 size=30 strength=62 value=4710 cash=1760 budget=1760 fee_room=1760 wage_room=1675 revenue=1126
+season 10: transfers=44 buyers=44/171 fee/value=105% avg_cash=5015 avg_budget=2237 wage/revenue=64% below_reserve=0
+  season 11 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.198
+  user: rep=1 size=30 strength=62 value=4710 cash=2000 budget=2000 fee_room=2000 wage_room=1915 revenue=1126
+season 11: transfers=45 buyers=42/171 fee/value=106% avg_cash=5021 avg_budget=2240 wage/revenue=64% below_reserve=0
+transfers=946 user: bids=137 buys=11 sales=0 | calc_links=97 sign=11 sell=0 verify=1007 simple_regen=61 saves=480
+digest=39401cc75e1441cf
+api_digest=5c1645dba450b222
+save block bytes=340744
+violations=0
+=== seed 3
+links=232
+  season 0 squads: size min/med/max=16/21/27 below_pos_min=7 one_gk=4 | strength top10=82 bottom10=63 (start 82/63) median=72 | value gini=0.253
+  user: rep=1 size=23 strength=59 value=3345 cash=614 budget=614 fee_room=614 wage_room=555 revenue=800
+season 0: transfers=137 buyers=121/171 fee/value=101% avg_cash=3655 avg_budget=1272 wage/revenue=63% below_reserve=0
+  season 1 squads: size min/med/max=17/20/26 below_pos_min=3 one_gk=2 | strength top10=82 bottom10=64 (start 82/63) median=73 | value gini=0.234
+  user: rep=2 size=26 strength=60 value=3875 cash=364 budget=364 fee_room=364 wage_room=296 revenue=923
+season 1: transfers=140 buyers=128/171 fee/value=95% avg_cash=4090 avg_budget=1634 wage/revenue=63% below_reserve=0
+  season 2 squads: size min/med/max=18/20/25 below_pos_min=1 one_gk=1 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.222
+  user: rep=1 size=27 strength=61 value=4135 cash=345 budget=345 fee_room=345 wage_room=272 revenue=989
+season 2: transfers=118 buyers=112/171 fee/value=97% avg_cash=4388 avg_budget=1856 wage/revenue=64% below_reserve=0
+  season 3 squads: size min/med/max=18/20/26 below_pos_min=1 one_gk=1 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.212
+  user: rep=1 size=28 strength=61 value=4340 cash=420 budget=420 fee_room=420 wage_room=343 revenue=1038
+season 3: transfers=88 buyers=87/171 fee/value=97% avg_cash=4601 avg_budget=2000 wage/revenue=65% below_reserve=0
+  season 4 squads: size min/med/max=19/20/26 below_pos_min=1 one_gk=1 | strength top10=82 bottom10=65 (start 82/63) median=73 | value gini=0.206
+  user: rep=1 size=29 strength=62 value=4700 cash=310 budget=310 fee_room=310 wage_room=226 revenue=1124
+season 4: transfers=80 buyers=80/171 fee/value=97% avg_cash=4750 avg_budget=2089 wage/revenue=65% below_reserve=0
+  season 5 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.203
+  user: rep=1 size=30 strength=62 value=5015 cash=277 budget=277 fee_room=277 wage_room=187 revenue=1199
+season 5: transfers=64 buyers=63/171 fee/value=99% avg_cash=4847 avg_budget=2153 wage/revenue=65% below_reserve=0
+  season 6 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.202
+  user: rep=1 size=30 strength=62 value=5015 cash=517 budget=517 fee_room=517 wage_room=427 revenue=1199
+season 6: transfers=59 buyers=58/171 fee/value=100% avg_cash=4916 avg_budget=2178 wage/revenue=65% below_reserve=0
+  season 7 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.200
+  user: rep=1 size=30 strength=62 value=4935 cash=928 budget=928 fee_room=928 wage_room=840 revenue=1180
+season 7: transfers=50 buyers=50/171 fee/value=104% avg_cash=4961 avg_budget=2205 wage/revenue=65% below_reserve=0
+  season 8 squads: size min/med/max=19/20/26 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.199
+  user: rep=1 size=30 strength=62 value=4935 cash=1168 budget=1168 fee_room=1168 wage_room=1080 revenue=1180
+season 8: transfers=45 buyers=43/171 fee/value=106% avg_cash=4990 avg_budget=2214 wage/revenue=64% below_reserve=0
+  season 9 squads: size min/med/max=19/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.198
+  user: rep=1 size=30 strength=62 value=4935 cash=1408 budget=1408 fee_room=1408 wage_room=1320 revenue=1180
+season 9: transfers=56 buyers=54/171 fee/value=101% avg_cash=5005 avg_budget=2206 wage/revenue=64% below_reserve=0
+  season 10 squads: size min/med/max=18/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.198
+  user: rep=1 size=30 strength=62 value=4850 cash=1892 budget=1892 fee_room=1892 wage_room=1805 revenue=1160
+season 10: transfers=43 buyers=42/171 fee/value=105% avg_cash=5015 avg_budget=2234 wage/revenue=64% below_reserve=0
+  season 11 squads: size min/med/max=18/20/27 below_pos_min=0 one_gk=0 | strength top10=82 bottom10=66 (start 82/63) median=73 | value gini=0.198
+  user: rep=1 size=30 strength=62 value=4850 cash=2132 budget=2132 fee_room=2132 wage_room=2045 revenue=1160
+season 11: transfers=44 buyers=43/171 fee/value=108% avg_cash=5021 avg_budget=2230 wage/revenue=64% below_reserve=0
+transfers=924 user: bids=124 buys=14 sales=3 | calc_links=98 sign=14 sell=3 verify=982 simple_regen=59 saves=480
+digest=eecae6edfef24b14
+api_digest=f0b3013825ebde8d
+save block bytes=340744
+violations=0
