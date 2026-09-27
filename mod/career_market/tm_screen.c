@@ -97,7 +97,7 @@ static void tm_open_fee_keyboard(uint32_t base);
 typedef struct {
     int32_t loaded;
     int32_t player_id, index;
-    int32_t rating, position, ask, value, trend, wage, tenths, join_pm, rivals, block;
+    int32_t rating, position, ask, value, trend, wage, tenths, join_pm, rivals, block, bid_fee;
     int32_t stats[8], stat_count;
     uint16_t name[40], club[48], role[16], rival_name[48];
     uint16_t stat_labels[8][14];
@@ -478,8 +478,8 @@ static void tm_build(uint32_t base) {
             MarketUiText t;
             ui_text_reset(&t, row->extra, 64);
             ui_text_append_ascii(&t, tm_pos_label(row->position));
-            ui_text_append_ascii(&t, "  Value ");
-            tm_append_money(&t, row->value);
+            ui_text_append_ascii(&t, "  Clubs pay ");
+            tm_append_money(&t, user_sale_value(&g_players[row->index]));
             int32_t tenths = contract_tenths_left(row->player_id, USER_TEAM_ID);
             ui_text_append_ascii(&t, "  Contract ");
             ui_text_append_i32(&t, tenths / 10);
@@ -535,7 +535,7 @@ static void tm_load_detail(uint32_t base) {
     d->value = market_value(player);
     d->trend = market_index_for(player) - 100;
     int32_t own = player->owner_id == USER_TEAM_ID;
-    d->ask = own ? d->value : user_bid_asking(player, user_index);
+    d->ask = own ? user_sale_value(player) : user_bid_asking(player, user_index);
     d->wage = own ? player->wage : transfer_wage_demand(player, user_index, player->owner_index);
     d->tenths = contract_tenths_left(player->player_id, player->owner_id);
     d->join_pm = own ? 1000 : tm_join_pm(player, user_index);
@@ -558,6 +558,16 @@ static void tm_load_detail(uint32_t base) {
         int32_t rival = find_rival(player, user_index, &rival_max, &count);
         d->rivals = count;
         if (rival >= 0) tm_team_name(base, g_market.clubs[rival].team_id, d->rival_name, 48);
+    }
+    d->bid_fee = 0;
+    if (own) {
+        /* the best bid a club would make for him now */
+        int32_t fee = 0, wage = 0;
+        int32_t buyer = best_ai_bid_for_user_player(index, &fee, &wage);
+        if (buyer >= 0) {
+            d->bid_fee = fee;
+            tm_team_name(base, g_market.clubs[buyer].team_id, d->rival_name, 48);
+        }
     }
     /* stats through the game's own PU_Get*Stat readers */
     static const uint32_t out_fns[8] = {0x2B3829, 0x2B383D, 0x2B38A1, 0x2B3851, 0x2B3815, 0x2B38C9, 0x2B3865, 0x2B38B5};
@@ -1273,9 +1283,22 @@ static void tm_draw_detail(float x) {
             y += 22.0f;
         }
     }
+    if (own) {
+        ui_text_reset(&t, g_tm.line, 160);
+        if (d->bid_fee > 0) {
+            ui_text_append_ascii(&t, "Best bid now: ");
+            tm_append_money(&t, d->bid_fee);
+            ui_text_append_ascii(&t, " from ");
+            ui_text_append_wide(&t, d->rival_name, 40);
+        } else {
+            ui_text_append_ascii(&t, "No club would bid for him right now");
+        }
+        tm_text(g_tm.line, px, y, 12.0f, d->bid_fee > 0 ? TM_SKY : TM_CHALK3, TM_ALIGN_LEFT, pw, 0);
+        y += 22.0f;
+    }
     /* price box */
     tm_rect(px, y, pw, 58.0f, TM_TURF);
-    tm_text(tm_w(own ? "YOUR VALUATION" : "ASKING PRICE"), px + 12.0f, y + 8.0f, 10.0f, TM_CHALK3, TM_ALIGN_LEFT, 0, 0);
+    tm_text(tm_w(own ? "CLUBS WOULD PAY" : "ASKING PRICE"), px + 12.0f, y + 8.0f, 10.0f, TM_CHALK3, TM_ALIGN_LEFT, 0, 0);
     tm_text(tm_money(d->ask), px + 12.0f, y + 24.0f, 24.0f, TM_AMBER, TM_ALIGN_LEFT, 0, 1);
     tm_text(tm_w("MARKET VALUE"), px + pw * 0.5f + 8.0f, y + 8.0f, 10.0f, TM_CHALK3, TM_ALIGN_LEFT, 0, 0);
     tm_text(tm_money(d->value), px + pw * 0.5f + 8.0f, y + 24.0f, 24.0f, TM_CHALK, TM_ALIGN_LEFT, 0, 1);

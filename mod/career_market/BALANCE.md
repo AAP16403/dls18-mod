@@ -332,8 +332,13 @@ squad stays at 17 or more, because below that the game auto-signs free players. 
 - **Limits:** 1–3 buys per window (by reputation), at most 2 sales per club per window, two passes per window
   turn in a rotating club order.
 - **Releases:** a club only lets non-surplus players go while it stays at or above its target depth.
-- **Bids for the user's players:** AI clubs bid on listed players. Clubs 15+ reputation points bigger
-  may make one unsolicited bid per turn for an unlisted user starter, at 135% of value or more.
+- **Bids for the user's players:** AI clubs bid on listed players and may bid unsolicited for an unlisted
+  user starter.
+  - **Sale value (v37d, user_sale_value):** market value × the seller's role weights {90, 100, 120, 150}.
+  - The premium above market value is scaled by the user club's reputation: 20% at rep 1, 33% at 20, 60% at 50, 90% at 80, full at 100. A key player is worth about +10% at the bottom of the pyramid and +50% at the top.
+  - Listed players get bids from 90% of the sale value up to 100% of it.
+  - Unsolicited bids run from 100% of the sale value up to 115% of it.
+  - The buyer's own valuation (buyer_max_price) must still reach the bid.
 - **Cache:** the market cache is rebuilt from the live rosters at the start of every turn, so a career plays out
   identically whether or not the app was restarted.
 

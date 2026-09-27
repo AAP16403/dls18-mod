@@ -252,8 +252,8 @@ static const int32_t k_starters[4] = {1, 4, 4, 2};   /* best XI used for strengt
 #define NEGOTIATION_SPLIT_PCT 35     /* deal lands this far from the ask towards the buyer max */
 #define MAX_AI_BUYS_PER_WINDOW 3
 #define MAX_SALES_PER_WINDOW 2
-#define UNSOLICITED_PREMIUM_PCT 115  /* AI bid for an unlisted user star: at least this % of market value */
-#define USER_SALE_CEILING_PCT 100    /* AI clubs value a user player at most at market value */
+#define UNSOLICITED_PREMIUM_PCT 115  /* AI bid for an unlisted user star: up to this % of his sale value */
+#define USER_SALE_CEILING_PCT 100    /* AI clubs pay at most a user player's sale value (user_sale_value) */
 #define USER_BUY_FLOOR_PCT 85        /* the user never buys a contracted player below this % of market value */
 #define AI_SQUAD_COMFORT 26          /* above this an AI club only buys needs or big upgrades */
 #define CLEARANCE_SQUAD 25           /* above this a club discounts its surplus players */
@@ -1891,6 +1891,22 @@ static int32_t buyer_max_price(const MarketPlayer *player, int32_t buyer_index) 
     return mul_div(value, 100 + premium, 100);
 }
 
+/* v37d: what AI clubs value one of the user's players at. The same importance premium an AI seller
+ * puts on its players (role_blend), but the part above market value shrinks smoothly with the
+ * user club's standing (reputation, which has a floor from the division): a key player fetches up
+ * to +50% at a top club, about +30% mid-pyramid and +10% at the bottom. */
+static int32_t user_sale_value(const MarketPlayer *player) {
+    static const int32_t role_pct[4] = {90, 100, 120, 150};
+    static const int32_t rx[5] = {1, 20, 50, 80, 100}, ry[5] = {200, 330, 600, 900, 1000};
+    int32_t pct = role_blend(player, role_pct);
+    if (pct > 100) {
+        int32_t owner = player->owner_index;
+        int32_t rep = owner >= 0 && owner < MAX_CLUBS ? g_club_rep[owner] : 50;
+        pct = 100 + (pct - 100) * lerp_pts(rep, rx, ry, 5) / 1000;
+    }
+    return mul_div(market_value(player), pct, 100);
+}
+
 static int32_t negotiated_fee(int32_t ask, int32_t buyer_max) {
     if (buyer_max < ask) return 0;
     return clamp_add(ask, mul_div(buyer_max - ask, NEGOTIATION_SPLIT_PCT, 100));
@@ -1988,13 +2004,13 @@ static int32_t ai_find_target(int32_t buyer_index, int32_t fee_room, int32_t wag
         int32_t ask = seller_reservation(player, seller_index);
         int32_t ceiling = buyer_max_price(player, buyer_index);
         if (user_seller) {
-            /* AI clubs bid for user players at market prices, not at one club's need premium or the
-             * user's own valuation; an unsolicited bid for a starter carries a fixed premium */
-            int32_t market = market_value(player);
-            ask = mul_div(market, 90, 100);
-            int32_t cap = mul_div(market, unsolicited ? UNSOLICITED_PREMIUM_PCT : USER_SALE_CEILING_PCT, 100);
+            /* AI clubs bid for user players around his sale value (importance premium scaled by the
+             * user's standing); an unsolicited bid for a starter starts at the full sale value */
+            int32_t value = user_sale_value(player);
+            ask = mul_div(value, unsolicited ? 100 : 90, 100);
+            int32_t cap = mul_div(value, unsolicited ? UNSOLICITED_PREMIUM_PCT : USER_SALE_CEILING_PCT, 100);
             if (ceiling > cap) ceiling = cap;
-            if (unsolicited && ceiling < cap) continue;   /* only a club that really wants him bids */
+            if (unsolicited && ceiling < ask) continue;   /* only a club that really wants him bids */
         }
         if (cheap_depth && ask > fee_room / 6) continue;
         int32_t fee = negotiated_fee(ask, ceiling);
@@ -2599,7 +2615,7 @@ static MarketOffer *create_ai_offer_for_user(int32_t buyer_index, int32_t player
     if (offer) {
         /* the buyer's valuation caps how far it moves when the user counters */
         int32_t ceiling = buyer_max_price(player, buyer_index);
-        int32_t cap = mul_div(market_value(player), USER_SALE_CEILING_PCT, 100);
+        int32_t cap = mul_div(user_sale_value(player), USER_SALE_CEILING_PCT, 100);
         if (ceiling > cap) ceiling = cap;
         if (ceiling > account_fee_room(buyer)) ceiling = account_fee_room(buyer);
         g_ext.offers[offer - g_market.offers].reservation = ceiling > fee ? ceiling : fee;
@@ -8573,7 +8589,7 @@ static int32_t best_ai_bid_for_user_player(int32_t player_index, int32_t *out_fe
         if (!useful || !player_will_join(player, b)) continue;
         int32_t fee_room = account_fee_room(buyer);
         int32_t fee = buyer_max_price(player, b);
-        int32_t cap = mul_div(market_value(player), USER_SALE_CEILING_PCT, 100);
+        int32_t cap = mul_div(user_sale_value(player), USER_SALE_CEILING_PCT, 100);
         if (fee > cap) fee = cap;
         if (need == 0 && improvement < 2) fee = mul_div(fee, 70, 100);
         if (fee > fee_room) fee = fee_room;

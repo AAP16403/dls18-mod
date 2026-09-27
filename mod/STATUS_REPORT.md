@@ -327,3 +327,31 @@
   - run_tests violations=0 with the digests unchanged; ARM crosscheck matches.
   - tm2_smoke ALL OK at 2880x1800 / 1024x640 / 1422x800. It now also checks left alignment on every print, the Android back path, and a bid from the Shortlist that signs.
   - It writes PNG previews of the draw calls (`tm2_smoke.py ... <out dir>`) for layout review.
+
+## Installed 2026-09-27: v37c (Back crash, stock footer input, search keyboard)
+- `build/DLS18_career_market_v37c_dls26_anim_v16.apk`, installed and hash verified: libCareerMarket 1dac0e0b... (`libCareerMarket_v37c.so`), libDLS18 v36c.
+- **Back crashed (SIGILL):** CFEScreenStack::DeleteTopScreen calls vtable slot 1 (deleting destructor), and the base CFEScreen slot 1 is a trap. Both our screens now have their own deleting destructor (exit, CFEScreen D1 0x23B5B3, operator delete 0x5C15C9).
+- **Scout Players / Sell Player still took taps:** hiding the footer was not enough. The screen now disables the header and footer input (CFEEntity::EnableInput) and removes the footer buttons through the button mask (CFEFooterMenu::RemoveButton); both come back on exit.
+- **Search box did not open the keyboard:** the screen now calls CFETextField::ShowKeyboard on the box's text field.
+- tm2_smoke checks that the deleting destructor frees the screen, the footer input is off, and its buttons are removed and restored.
+
+## Built 2026-09-27: v37d (what computer clubs pay for the user's players)
+- `build/DLS18_career_market_v37d_dls26_anim_v16.apk`: libCareerMarket c682518e... (`libCareerMarket_v37d.so`), libDLS18 v36c. Not installed yet: the tablet was not connected.
+- **Why:** computer clubs charged the user an importance premium for their key players (role x1.5 plus markup and a standing premium), but bid for the user's players at 90-100% of market value. A key player such as a 79 LM was valued at his 1,190 market value while other clubs' 79 LMs asked about 2,200.
+- **user_sale_value:** AI clubs now value the user's players with the same importance weights an AI seller uses (role_blend {90, 100, 120, 150} for surplus / rotation / starter / key).
+  - The part above market value shrinks smoothly with the user club's reputation, which has a floor set by the division.
+  - The scale is 20% of the premium at rep 1, 33% at 20, 60% at 50, 90% at 80 and 100% at 100.
+  - So a full key player fetches about +10% at the bottom of the pyramid, +30% mid-pyramid and +50% at the top.
+- **Where it applies:**
+  - AI bids for listed players start at 90% of the sale value and are capped at the sale value.
+  - Unsolicited bids for starters start at the full sale value and are capped at 115%.
+  - The cap on the buyer's valuation when the user counters (create_ai_offer_for_user) and the best current bid (best_ai_bid_for_user_player) use it too.
+  - The buyer still has to value him that highly (buyer_max_price: need, lift to its best XI, budget), afford him and have him willing to join.
+- **My Squad:**
+  - Rows show "Clubs pay X" instead of the market value.
+  - The detail panel shows CLUBS WOULD PAY next to MARKET VALUE, and "Best bid now: X from <club>" (or that nobody would bid right now).
+- **Tests:**
+  - run_tests violations=0. The digests changed as expected (ea85af2fcd25deab / 697e902c76876000).
+  - The ARM crosscheck matches harness --no-user (7029bc38bb23f947).
+  - tm2_smoke ALL OK.
+  - test_hooks reports STRAY calls on v37c as well; that is a mock-coverage gap in the test from the v2 screen, not from this change.
