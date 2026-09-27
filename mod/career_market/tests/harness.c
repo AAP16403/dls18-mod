@@ -1185,6 +1185,166 @@ static const uint16_t *m_tm_team_name(int32_t team_id, int32_t a, int32_t b) {
     return name;
 }
 
+/* Club Hub league mock: the user and every 12th club (up to 15 rivals) form one league, ordered by strength. */
+static int32_t m_hub_league_pos(void *league, int32_t team_id) {
+    (void)league;
+    int32_t members[16], n = 0;
+    for (int32_t c = 0; c < MAX_CLUBS && n < 16; ++c) {
+        ClubAccount *club = &g_market.clubs[c];
+        if (club->team_id < 0) continue;
+        if (club->team_id == USER_TEAM_ID || (c % 12 == 0 && n < 15)) members[n++] = c;
+    }
+    int32_t me = -1;
+    for (int32_t i = 0; i < n; ++i) if (g_market.clubs[members[i]].team_id == team_id) me = members[i];
+    if (me < 0) return -1;
+    int32_t above = 0;
+    for (int32_t i = 0; i < n; ++i) {
+        ClubAccount *o = &g_market.clubs[members[i]];
+        if (members[i] != me && (o->strength > g_market.clubs[me].strength ||
+                                 (o->strength == g_market.clubs[me].strength && members[i] < me))) ++above;
+    }
+    return above;
+}
+
+static void h_test_hub(void) {
+    static CareerMarketState saved_market;
+    static uint8_t saved_ext[sizeof(g_ext)];
+    static PlayerContract saved_contracts[CONTRACT_EXTENSION_CAPACITY];
+    uint32_t base = FAKE_BASE;
+    thunk(0x2938CD, m_tm_player_name);
+    thunk(0x20C0C9, m_tm_team_name);
+    thunk(0x36202F, m_hub_league_pos);
+    void **league_slot = (void **)(uintptr_t)(base + PROFILE_INSTANCE + 0x14 + 0x6AC);
+    void *saved_league = *league_slot;
+    *league_slot = (void *)&h_db;                 /* any non-null pointer: the mock ignores it */
+    sync_accounts(base);
+    build_player_cache(base);
+    memcpy(&saved_market, &g_market, sizeof(g_market));
+    memcpy(saved_ext, &g_ext, sizeof(g_ext));
+    memcpy(saved_contracts, g_contract_extension, sizeof(g_contract_extension));
+    int32_t user_index = find_account(USER_TEAM_ID);
+    if (user_index < 0) fail("hub: no user club", 0, 0);
+    g_tm.base = base;
+    hub_build(base);
+    /* board */
+    if (g_hub.league_n < 2 || g_hub.league_n > 16) fail("hub: league not found", g_hub.league_n, 0);
+    if (g_hub.league_pos < 1 || g_hub.league_pos > g_hub.league_n) fail("hub: league position out of range", g_hub.league_pos, g_hub.league_n);
+    if (g_hub.expected_x10 < 10 || g_hub.expected_x10 > g_hub.league_n * 10) fail("hub: board target out of range", g_hub.expected_x10, g_hub.league_n);
+    if (g_hub.confidence_pm < 30 || g_hub.confidence_pm > 970) fail("hub: confidence out of range", g_hub.confidence_pm, 0);
+    /* the target is continuous: one more point of squad strength never moves it by a full place */
+    {
+        int32_t before = g_hub.expected_x10;
+        g_market.clubs[user_index].strength += 1;
+        hub_board_build(base);
+        int32_t step = before - g_hub.expected_x10;
+        g_market.clubs[user_index].strength -= 1;
+        hub_board_build(base);
+        if (step < 0 || step > 10) fail("hub: board target jumped with one strength point", before, step);
+    }
+    /* contracts: every user player, contracts ending first */
+    if (g_hub.row_count != (g_total_count[user_index] < HUB_ROWS_MAX ? g_total_count[user_index] : HUB_ROWS_MAX))
+        fail("hub: contract rows do not match the squad", g_hub.row_count, g_total_count[user_index]);
+    for (int32_t i = 1; i < g_hub.row_count; ++i)
+        if (g_hub.rows[i - 1].tenths > g_hub.rows[i].tenths) fail("hub: contracts not sorted", i, g_hub.rows[i].tenths);
+    for (int32_t i = 0; i < g_hub.row_count; ++i) {
+        const HubRow *row = &g_hub.rows[i];
+        if (g_players[row->index].owner_id != USER_TEAM_ID) fail("hub: contract row not a user player", i, 0);
+        if (row->ask <= 0 || row->pay <= 0) fail("hub: renewal ask or sale value missing", row->ask, row->pay);
+    }
+    /* renewal at his full demand signs and extends the deal */
+    g_market.clubs[user_index].wage_budget = clamp_add(g_market.clubs[user_index].payroll, 100000);
+    int32_t signed_id = -1, countered = 0, ended = 0, rounds = 0, accepted = 0;
+    for (int32_t i = 0; i < g_hub.row_count && signed_id < 0; ++i) {
+        const HubRow *row = &g_hub.rows[i];
+        if (!row->renewable) continue;
+        int32_t id = row->player_id, before = row->tenths, counter = 0;
+        int32_t r = hub_renewal_offer(base, id, row->ask, 4, &counter);
+        if (r != 1) fail("hub: renewal at the full demand refused", r, id);
+        build_player_cache(base);
+        int32_t index = find_cached_player(id);
+        if (index < 0 || g_players[index].wage != row->ask) fail("hub: renewed wage not applied", index, row->ask);
+        if (contract_tenths_left(id, USER_TEAM_ID) <= before) fail("hub: renewal did not extend the contract", before, 0);
+        signed_id = id;
+    }
+    if (signed_id < 0) fail("hub: no renewable player", g_hub.row_count, 0);
+    /* a lowball gets a counter at or above his hidden point; offers keep using patience until talks end */
+    hub_build(base);
+    for (int32_t i = 0; i < g_hub.row_count && !ended; ++i) {
+        const HubRow *row = &g_hub.rows[i];
+        if (!row->renewable || row->player_id == signed_id) continue;
+        int32_t id = row->player_id, ask = row->ask;
+        while (rounds < 12) {
+            int32_t counter = 0, left = renewal_patience_left(id);
+            int32_t r = hub_renewal_offer(base, id, mul_div(ask, 50, 100), 2, &counter);
+            ++rounds;
+            if (r == -4) { ended = 1; break; }
+            if (r != 0) fail("hub: lowball renewal not countered", r, id);
+            if (counter <= mul_div(ask, 50, 100) || counter > ask) fail("hub: counter out of range", counter, ask);
+            if (renewal_patience_left(id) >= left) fail("hub: a short offer used no patience", left, 0);
+            ++countered;
+        }
+        if (!ended) fail("hub: renewal talks never ended", rounds, 0);
+        if (hub_renewal_offer(base, id, ask, 2, (int32_t *)0) != -4) fail("hub: talks reopened in the same season", id, 0);
+        break;
+    }
+    /* accepting a counter signs */
+    hub_build(base);
+    for (int32_t i = 0; i < g_hub.row_count && !accepted; ++i) {
+        const HubRow *row = &g_hub.rows[i];
+        if (!row->renewable || row->player_id == signed_id || renewal_patience_left(row->player_id) < 3000) continue;
+        int32_t counter = 0;
+        int32_t r = hub_renewal_offer(base, row->player_id, mul_div(row->ask, 80, 100), 3, &counter);
+        if (r == 1) { accepted = 1; break; }
+        if (r != 0) fail("hub: 80% renewal offer gave no counter", r, row->player_id);
+        if (hub_renewal_offer(base, row->player_id, counter, 3, (int32_t *)0) != 1) fail("hub: accepting the counter did not sign", counter, 0);
+        accepted = 1;
+    }
+    /* keep: kept starters get no unsolicited AI bids; listing him releases the keep */
+    build_player_cache(base);
+    int32_t kept = 0;
+    for (int32_t i = 0; i < g_player_count && kept < 16; ++i) {
+        MarketPlayer *p = &g_players[i];
+        if (p->owner_id != USER_TEAM_ID || p->listed_for_sale) continue;
+        if (user_keep_toggle(p->player_id) != 1) fail("hub: keep failed", p->player_id, kept);
+        ++kept;
+    }
+    for (int32_t b = 0; b < MAX_CLUBS; ++b) {
+        ClubAccount *buyer = &g_market.clubs[b];
+        if (buyer->team_id < 0 || buyer->team_id == USER_TEAM_ID) continue;
+        int32_t fee = 0, wage = 0, max = 0;
+        int32_t t = ai_find_target(b, 1 << 28, 1 << 28, 1, &fee, &wage, &max);
+        if (t >= 0 && g_players[t].owner_id == USER_TEAM_ID && user_is_kept(g_players[t].player_id))
+            fail("hub: an AI club targeted a kept player", g_players[t].player_id, b);
+    }
+    {
+        int32_t id = -1;
+        for (int32_t i = 0; i < g_player_count && id < 0; ++i)
+            if (g_players[i].owner_id == USER_TEAM_ID && user_is_kept(g_players[i].player_id) &&
+                !user_signing_locked(g_players[i].player_id) && !has_active_offer_for_player(g_players[i].player_id)) id = g_players[i].player_id;
+        if (id >= 0) {
+            if (toggle_user_listing(id) != 0) fail("hub: could not list a kept player", id, 0);
+            if (user_is_kept(id)) fail("hub: listing did not release the keep", id, 0);
+            toggle_user_listing(id);
+        }
+    }
+    memcpy(&g_market, &saved_market, sizeof(g_market));
+    memcpy(&g_ext, saved_ext, sizeof(g_ext));
+    memcpy(g_contract_extension, saved_contracts, sizeof(g_contract_extension));
+    rebuild_contract_index();
+    *league_slot = saved_league;
+    for (int32_t i = 0; i < USER_LISTING_CAPACITY; ++i) g_user_listed_player_ids[i] = -1;
+    sync_accounts(base);
+    build_player_cache(base);
+    ++g_price_epoch;
+    thunk(0x2938CD, m_unexpected);
+    thunk(0x20C0C9, m_unexpected);
+    thunk(0x36202F, m_unexpected);
+    if (!h_quiet) printf("club hub: board target %d.%d of %d (now %d), %d contracts, renewal at demand signs, "
+                         "%d counters before talks ended, counter accepted, %d kept players skipped by AI bids OK\n",
+                         g_hub.expected_x10 / 10, g_hub.expected_x10 % 10, g_hub.league_n, g_hub.league_pos,
+                         g_hub.row_count, countered, kept);
+}
+
 static void h_test_tm2(void) {
     static CareerMarketState saved_market;
     static uint8_t saved_ext[sizeof(g_ext)];
@@ -1555,6 +1715,7 @@ int main(int argc, char **argv) {
     h_test_transfer_screen();
     h_test_continuous();
     h_test_tm2();
+    h_test_hub();
     FILE *csv = csv_path ? fopen(csv_path, "w") : NULL;
     if (csv) fprintf(csv, "season,club,rep,tier_value,cash,budget,wage_budget,payroll,revenue,squad_value,strength,size\n");
 

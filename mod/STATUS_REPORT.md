@@ -355,3 +355,52 @@
   - The ARM crosscheck matches harness --no-user (7029bc38bb23f947).
   - tm2_smoke ALL OK.
   - test_hooks reports STRAY calls on v37c as well; that is a mock-coverage gap in the test from the v2 screen, not from this change.
+
+## Installed 2026-09-27: v38 (Club Hub)
+- `build/DLS18_career_market_v38_dls26_anim_v16.apk`, installed and hash verified: libCareerMarket ed6ffa85... (`libCareerMarket_v38.so`), libDLS18 v36c. v37d (c682518e) was installed before it.
+- **Club Hub** (`mod/career_market/hub_screen.c`):
+  - The club's own window, opened from a Club Hub button in the transfer market's top bar.
+  - It is a second view of the transfer screen object, so Back (the Market button or Android back) returns to the market and never leaves through the screen stack.
+  - Prototype: `design/club_hub/club_hub.html` (artifact https://claude.ai/artifact/1X1oFqcMrh3VEeD3wBSP3g).
+  - **Finances:**
+    - spendable coins after the wage reserve
+    - the wage bill against the wage budget and the room left
+    - the season net
+    - income and spending by category, for this season or the last
+  - **Board:**
+    - A target finish, the expected position from squad strength: 1 + the sum over league rivals of a ramp over -6..+6 strength difference, so it is continuous.
+    - League membership comes from CTournament::GetTeamLeaguePos 0x36202E on the league at CSeason+0x6AC.
+    - Confidence runs from the live position against the target, 9% for each place.
+    - What the division pays: match prizes, goal and clean-sheet bonuses, gate, the cup prize, TV and sponsor money, the league prize range and the prize at the current place.
+    - What promotion is worth: the bonus, plus the next division's higher season money.
+  - **Contracts:**
+    - depth per position against the min, target and max
+    - every player with role, contract left (with a bar), wage, renewal ask and what clubs would pay, contracts ending first
+    - a detail panel to renew (wage slider, -5% / +5%, a typed wage, 1-5 years, his patience), list or keep him
+- **Renewal talks** (`hub_renewal_offer`):
+  - He signs at or above a hidden point between 88% and 100% of his demand, fixed per player and season.
+  - Below it he counters two thirds of the way to his demand, never below that point.
+  - Each short offer uses 0.4 strike plus 4 strikes per 100% short. At 3 strikes the talks are over until next season.
+  - Renewal talks use their own talk slots and never overwrite a running transfer talk.
+- **Keep:**
+  - Up to 16 kept players, saved in the former `MarketExt.reserved` space, so saves stay compatible.
+  - A kept player gets no unsolicited AI bids.
+  - Keeping him takes him off the sale list, and listing him releases the keep.
+- **Tests:**
+  - A new harness test (h_test_hub) covers:
+    - the board target and its continuity (one strength point never moves it a full place)
+    - the contract rows and their order
+    - a renewal at the full demand signs and extends the contract
+    - lowballs get counters and use patience until talks end, and talks stay closed that season
+    - accepting a counter signs
+    - AI target searches skip kept players, and listing releases a keep
+  - run_tests violations=0. The API digest is unchanged, and the ARM crosscheck matches (7029bc38bb23f947).
+  - tm2_smoke ALL OK. It now also:
+    - opens the Hub from the market button
+    - visits every section and scrolls the contracts
+    - uses the wage slider, +5% and the years buttons, and makes a renewal offer (answered on screen)
+    - taps Keep and List
+    - checks Android back and the Market button return to the market without leaving the screen
+- **Save check on the tablet** (profile.dat read over adb, the game not launched):
+  - In season 1 the log's last 128 transfers were 124 AI-to-AI and 4 signings by the user.
+  - One AI bid for the user's 79-rated MID (player 13032) was waiting for the user in Offers. Club 26 opened at 1,126, under the v37c pricing, and its counter stood at 1,141.

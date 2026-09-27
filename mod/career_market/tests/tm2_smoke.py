@@ -197,6 +197,24 @@ UI_MOCKS = {
     0x23B5B3: (1, lambda s: s),                                  # CFEScreen::~CFEScreen (complete)
     0x5C15C9: (1, lambda p: deleted.append(p) or 0),             # operator delete veneer
 }
+USER_TEAM_ID = 0x102
+league_calls = [0]
+
+
+def m_league_pos(league, team):
+    # a 16-club league: the user 6th, every 13th team id fills the other places
+    league_calls[0] += 1
+    team = ac.s32(team)
+    if team == USER_TEAM_ID:
+        return 5
+    if team % 13 == 0 and team < 13 * 16:
+        return (team // 13) % 16
+    return -1
+
+
+UI_MOCKS[0x36CC41] = (1, lambda season: 4)      # CSeason::GetUserLeagueInTree: Division 3
+UI_MOCKS[0x36202F] = (2, m_league_pos)          # CTournament::GetTeamLeaguePos
+UI_MOCKS[0x241FB5] = (1, lambda field: 0)       # CFETextField::GetText (keyboard never confirmed here)
 deleted = []
 footer = [0]
 inputs = []
@@ -302,6 +320,21 @@ def main():
             touch.update(released=0)
             frame()
 
+        def find(label):
+            # design-space centre of the last drawn text equal to label
+            for op in reversed(record):
+                if op[0] == "t" and op[3] == label:
+                    return (op[1] + text_w(label, op[5]) * 0.5) / s, (op[2] + 8.0 * s) / s
+            stats["bad"].append(f"'{label}' not on screen")
+            return None
+
+        def tap_label(label):
+            frame()
+            at = find(label)
+            if at:
+                tap(*at)
+            return at is not None
+
         def drag(x0, y0, x1, y1, steps=6):
             d = (int(x0 * s), int(y0 * s))
             touch.update(pos=d, down=d, touching=1, pressed=1, released=0)
@@ -335,6 +368,56 @@ def main():
         snap("4_shortlist")
         tap(80, 56 + 10 + 4 * 48 + 23)                 # My Squad tab
         snap("5_squad")
+        # Club Hub: the market's top-bar button, every section, a renewal, keep, list, then back to the market
+        ac.wr32(ac.FAKE + 0x84A260 + 0x14 + 0x6AC, ac.alloc(16))       # CSeason+0x6AC: the league
+        backs_before_hub = stats["back"]
+        tap_label("Club Hub")
+        tap(80, 56 + 10 + 0 * 48 + 23)                 # Finances (the hub remembers its last section)
+        snap("6_hub_finances")
+        tap_label("Last season")
+        tap_label("This season")
+        tap(80, 56 + 10 + 1 * 48 + 23)                 # Board
+        snap("7_hub_board")
+        tap(80, 56 + 10 + 2 * 48 + 23)                 # Contracts
+        list_w = dw - 176 - 320
+        drag(176 + 150, 500, 176 + 150, 260)           # scroll the contracts
+        drag(176 + 150, 260, 176 + 150, 560)
+        tap(176 + 150, 56 + 62 + 1 + 26 + 4 + 25)      # first row: the contract ending soonest
+        bx, bw = dw - 320 + 16 + 12, 320 - 32 - 24
+        track_y = 56 + 16 + 68 + 56 + 10 + 52 + 8
+        drag(bx + bw * 0.5, track_y, bx + bw * 0.25, track_y)   # wage slider down: a short offer
+        tap_label("+ 5%")
+        tap_label("2 yr")
+        snap("8_hub_contracts")
+        tap_label("Offer renewal")
+        snap("9_hub_reply")
+        frame()
+        counters = [op[3] for op in record if op[0] == "t" and op[3].startswith("Accept ")]
+        if counters:
+            tap_label(counters[0])
+        tap_label("Keep him")
+        tap_label("Kept")
+        tap_label("List for sale")
+        frame()
+        if any(op[0] == "t" and op[3] == "Listed" for op in record):
+            tap_label("Listed")
+        if league_calls[0] == 0:
+            stats["bad"].append("the board never read the league table")
+        # Android back in the hub returns to the market, it does not leave the screen
+        if not header[0]:
+            header[0] = ac.alloc(0x400)
+            ac.uc.mem_write(header[0], bytes(0x400))
+        ac.wr32(header[0] + 0x310, 1)
+        frame()
+        frame()
+        if stats["back"] != backs_before_hub:
+            stats["bad"].append("back in the Club Hub left the transfer screen")
+        tap_label("Club Hub")                          # and the Market button does the same
+        tap(60, 28)
+        frame()
+        if not any(op[0] == "t" and op[3] == "TRANSFER MARKET" for op in record):
+            stats["bad"].append("the Market button did not return to the transfer market")
+        tap(80, 56 + 10 + 4 * 48 + 23)                 # My Squad tab again
         tap(80, 56 + 10 + 1 * 48 + 23)                 # back to the shortlist; bid from there
         tap(176 + 150, 56 + 52 + 6 + 29)
         tap(dw - 320 + 16 + 60, 640 - 60 + 8 + 22)      # Make offer
@@ -390,7 +473,10 @@ def main():
         ok = False
         print("problems:", stats["bad"][:10])
     wanted = ["TRANSFER MARKET", "Scout", "My Squad", "MARKET PULSE", "YOUR FEE OFFER", "CONTRACT LENGTH",
-              "CLUB'S PATIENCE", "Chance he joins", "ASKING PRICE"]
+              "CLUB'S PATIENCE", "Chance he joins", "ASKING PRICE",
+              "CLUB HUB", "Finances", "Board", "Contracts", "SPENDABLE NOW", "WAGE BILL A SEASON", "INCOME", "SPENDING",
+              "BOARD TARGET THIS SEASON", "Board confidence", "WHAT DIVISION 3 PAYS", "PROMOTION IS WORTH",
+              "YOUR WAGE OFFER", "HIS PATIENCE", "CLUBS PAY", "WAGE / ASKS", "Offer renewal"]
     missing = [w for w in wanted if w not in seen]
     replies = [t for t in seen if t.startswith(("We offer", "Close.", "Too low", "That is not", "Deal", "Fee agreed",
                                                 "Signed", "We are wasting", "You already", "He does not", "His club"))]
@@ -407,6 +493,15 @@ def main():
             for i in range(count):
                 if call(ac.LIB + syms["career_market_get_player"], i, view) and ac.rds32(view) == pid:
                     print("market view (id, club, pos, rating, value, wage):", struct.unpack("<6i", ac.uc.mem_read(view, 24)))
+    hub_replies = sorted(t for t in seen if t.startswith(("He signs", "Not enough", "He is tired", "Kept.", "No longer kept",
+                                                          "Listed for sale", "Taken off", "Finish around")))
+    print("club hub lines seen:", hub_replies[:8])
+    if not any(t.startswith(("He signs", "Not enough")) for t in hub_replies):
+        ok = False
+        print("the renewal offer never got an answer")
+    if not any(t.startswith("Finish around") for t in hub_replies):
+        ok = False
+        print("no board target drawn")
     print("window:", [t for t in seen if "WINDOW" in t or "Window" in t][:4],
           "buttons:", [t for t in seen if t in ("Make offer", "Continue talks", "Window closed", "Shortlist",
                                                  "Submit offer", "Not enough coins", "Talks over", "Leave", "Walk away")])

@@ -59,7 +59,11 @@ enum {
     TM_HIT_LIST, TM_HIT_OFFER, TM_HIT_SHORTLIST, TM_HIT_SLIDER, TM_HIT_YEARS, TM_HIT_SUBMIT, TM_HIT_ACCEPT,
     TM_HIT_LEAVE, TM_HIT_WAGE_ACCEPT, TM_HIT_WAGE_LOWER, TM_HIT_INBID_ACCEPT, TM_HIT_INBID_COUNTER,
     TM_HIT_INBID_REJECT, TM_HIT_LISTTOGGLE, TM_HIT_SHEET, TM_HIT_FEE_MINUS, TM_HIT_FEE_PLUS, TM_HIT_FEE_TYPE,
-    TM_HIT_CLEAR_SEARCH
+    TM_HIT_CLEAR_SEARCH, TM_HIT_HUB,
+    /* Club Hub (hub_screen.c) */
+    HUB_HIT_FIRST, HUB_HIT_BACK = HUB_HIT_FIRST, HUB_HIT_TAB, HUB_HIT_SEASON, HUB_HIT_LIST, HUB_HIT_ROW,
+    HUB_HIT_SLIDER, HUB_HIT_MINUS, HUB_HIT_PLUS, HUB_HIT_TYPE, HUB_HIT_YEARS, HUB_HIT_RENEW, HUB_HIT_ACCEPT,
+    HUB_HIT_LISTTOGGLE, HUB_HIT_KEEP
 };
 enum { TM_LOG_CLUB, TM_LOG_YOU, TM_LOG_RIVAL, TM_LOG_GOOD, TM_LOG_BAD };
 
@@ -106,6 +110,7 @@ typedef struct {
 static struct {
     void *screen;
     uint32_t base;
+    int32_t view;               /* 0 the market, 1 the Club Hub */
     float s, dw, height, width;
     float base_h;               /* font height at scale 1 */
     int32_t tab, pos_filter, sort;
@@ -945,6 +950,8 @@ static void tm_keyboard_poke(uint32_t base) {
     g_tm.kb_wait = 0;
 }
 
+#include "hub_screen.c"
+
 /* ---------------------------------------------------------------------------------------------------------------
  * render
  * ------------------------------------------------------------------------------------------------------------- */
@@ -976,6 +983,7 @@ static void tm_draw_top(uint32_t base) {
     float pw = tm_text_width(g_tm.line, 12.0f) + 24.0f;
     tm_rect(x, 15.0f, pw, 26.0f, TM_TURF2);
     tm_text(g_tm.line, x + 12.0f, 21.0f, 12.0f, open ? TM_GOOD : TM_CHALK2, TM_ALIGN_LEFT, 0, 1);
+    if (!g_tm.neg_open) tm_button(x + pw + 12.0f, 9.0f, 112.0f, 38.0f, tm_w("Club Hub"), 0, 1, TM_HIT_HUB, 0);
     int32_t user_index = tm_user_index();
     if (user_index < 0) return;
     ClubAccount *club = &g_market.clubs[user_index];
@@ -1541,6 +1549,15 @@ static void tm_draw_sheet(float x, float w) {
               active ? 1 : 0);
 }
 
+static void tm_draw_toast(float main_x, float main_w) {
+    if (g_tm.toast_frames <= 0) return;
+    --g_tm.toast_frames;
+    float tw = main_w - 24.0f;
+    float ty = TM_DESIGN_H - 52.0f;
+    tm_rect(main_x + 12.0f, ty, tw, 40.0f, TM_CHALK);
+    tm_text(g_tm.toast, main_x + 26.0f, ty + 12.0f, 13.0f, TM_GROUND, TM_ALIGN_LEFT, tw - 28.0f, 1);
+}
+
 static void tm_render(void *screen) {
     if (!screen || screen != g_tm.screen) return;
     uint32_t base = g_tm.base;
@@ -1563,6 +1580,12 @@ static void tm_render(void *screen) {
         ((TmTextDimsFn)(base + 0x38F2A1))(dims, tm_w("Ag"));
         g_tm.base_h = dims[1] > 1.0f ? dims[1] : 20.0f;
     }
+    if (g_tm.view == 1) {
+        g_tm.hit_count = 0;
+        hub_render(base);
+        tm_draw_toast(TM_RAIL_W, g_tm.dw - TM_RAIL_W - TM_DETAIL_W);
+        return;
+    }
     if (g_tm.dirty) {
         tm_build(base);
         if (g_tm.sel_id < 0 && g_tm.row_count) g_tm.sel_id = g_tm.rows[0].player_id;
@@ -1582,13 +1605,7 @@ static void tm_render(void *screen) {
     }
     tm_draw_rail();
     tm_draw_top(base);
-    if (g_tm.toast_frames > 0) {
-        --g_tm.toast_frames;
-        float tw = main_w - 24.0f;
-        float ty = TM_DESIGN_H - 52.0f;
-        tm_rect(main_x + 12.0f, ty, tw, 40.0f, TM_CHALK);
-        tm_text(g_tm.toast, main_x + 26.0f, ty + 12.0f, 13.0f, TM_GROUND, TM_ALIGN_LEFT, tw - 28.0f, 1);
-    }
+    tm_draw_toast(main_x, main_w);
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -1624,6 +1641,7 @@ static void tm_set_fee_from_x(float x) {
 static void tm_activate(uint32_t base, const TmHit *hit) {
     switch (hit->kind) {
     case TM_HIT_BACK: tm_back(base); break;
+    case TM_HIT_HUB: hub_open(base); break;
     case TM_HIT_TAB:
         g_tm.tab = hit->value;
         g_tm.neg_open = 0;
@@ -1685,12 +1703,15 @@ static void tm_activate(uint32_t base, const TmHit *hit) {
         g_tm.dirty = 1;
         break;
     }
-    default: break;
+    default:
+        if (hit->kind >= HUB_HIT_FIRST) hub_activate(base, hit);
+        break;
     }
 }
 
 static void tm_back(uint32_t base) {
-    if (g_tm.neg_open) { g_tm.neg_open = 0; g_tm.dirty = 1; }
+    if (g_tm.view == 1) hub_back(base);
+    else if (g_tm.neg_open) { g_tm.neg_open = 0; g_tm.dirty = 1; }
     else ((CfeBackMarketFn)(base + 0x29910D))(1);
 }
 
@@ -1715,22 +1736,28 @@ static void tm_input(uint32_t base) {
     float dx = (float)down[0] / s, dy = (float)down[1] / s;
     if (pressed(1)) {
         const TmHit *hit = tm_hit_at(dx, dy);
-        g_tm.drag_kind = hit ? (hit->kind == TM_HIT_SLIDER ? TM_HIT_SLIDER
+        g_tm.drag_kind = hit ? (hit->kind == TM_HIT_SLIDER || hit->kind == HUB_HIT_SLIDER ? TM_HIT_SLIDER
                                 : hit->kind == TM_HIT_ROW || hit->kind == TM_HIT_LIST || hit->kind == TM_HIT_STAR
                                   || hit->kind == TM_HIT_INBID_ACCEPT || hit->kind == TM_HIT_INBID_COUNTER
-                                  || hit->kind == TM_HIT_INBID_REJECT || hit->kind == TM_HIT_LISTTOGGLE
+                                  || hit->kind == TM_HIT_INBID_REJECT
+                                  || (hit->kind == TM_HIT_LISTTOGGLE && g_tm.view == 0)
+                                  || hit->kind == HUB_HIT_ROW || hit->kind == HUB_HIT_LIST
                                   ? TM_HIT_LIST : hit->kind) : TM_HIT_NONE;
         g_tm.drag_moved = 0;
-        g_tm.drag_scroll0 = g_tm.scroll;
+        g_tm.drag_scroll0 = g_tm.view == 1 ? g_hub.scroll : g_tm.scroll;
     }
     if (touching(1)) {
-        if (g_tm.drag_kind == TM_HIT_LIST && !g_tm.neg_open) {
+        if (g_tm.drag_kind == TM_HIT_LIST && (g_tm.view == 1 || !g_tm.neg_open)) {
             float delta = py - dy;
             if (delta > 10.0f || delta < -10.0f) g_tm.drag_moved = 1;
-            if (g_tm.drag_moved) g_tm.scroll = g_tm.drag_scroll0 - delta;
+            if (g_tm.drag_moved) {
+                if (g_tm.view == 1) g_hub.scroll = g_tm.drag_scroll0 - delta;
+                else g_tm.scroll = g_tm.drag_scroll0 - delta;
+            }
         } else if (g_tm.drag_kind == TM_HIT_SLIDER) {
             g_tm.drag_moved = 1;
-            tm_set_fee_from_x(px);
+            if (g_tm.view == 1) hub_set_wage_from_x(px);
+            else tm_set_fee_from_x(px);
         }
     }
     if (released(1)) {
@@ -1739,6 +1766,7 @@ static void tm_input(uint32_t base) {
             const TmHit *start = tm_hit_at(dx, dy);
             if (hit && start && hit->kind == start->kind && hit->value == start->value) {
                 if (hit->kind == TM_HIT_SLIDER) tm_set_fee_from_x(px);
+                else if (hit->kind == HUB_HIT_SLIDER) hub_set_wage_from_x(px);
                 else tm_activate(base, hit);
             }
         }
@@ -1783,6 +1811,7 @@ static void tm_screen_init(void *screen) {
     ((TmDisplayFn)(base + 0x23B75D))(screen, 0);   /* CFEScreen::DisplayHeader(false) */
     tm_refresh(base);
     g_tm.neg_open = 0;
+    g_tm.view = 0;
     g_tm.drag_kind = TM_HIT_NONE;
     g_tm.hit_count = 0;
     if (g_tm.pos_filter < -1 || g_tm.pos_filter > 3) g_tm.pos_filter = -1;

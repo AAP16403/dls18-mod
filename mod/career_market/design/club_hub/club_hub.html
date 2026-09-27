@@ -1,0 +1,365 @@
+<title>Club Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --ground: #0d221b; --turf: #12302a; --turf-2: #173a32; --turf-3: #1f483e; --line: #2a5549;
+  --chalk: #eef3ec; --chalk-2: #b3c8be; --chalk-3: #86a397;
+  --amber: #f2b233; --amber-ink: #231a05; --sky: #7cc0ff; --bad: #ff8f6b; --good: #8fe0a8;
+  --display: "Big Shoulders Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--ground); color: var(--chalk); }
+body { font-family: var(--body); font-size: 14px; padding-inline: 16px; padding-block: 20px 40px; }
+.page { max-width: 1024px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.page-head h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: .02em; text-transform: uppercase; }
+.page-head p { margin: 4px 0 0; color: var(--chalk-2); font-size: 13px; max-width: 70ch; }
+.stage { width: 100%; position: relative; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(0,0,0,.45); }
+.screen { width: 1024px; height: 640px; position: absolute; top: 0; left: 0; transform-origin: 0 0; background: var(--turf); display: grid; grid-template-rows: 56px 1fr; overflow: hidden; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.eyebrow { margin: 0; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--chalk-3); font-weight: 600; }
+
+.top { display: flex; align-items: center; gap: 14px; padding: 0 16px 0 10px; background: var(--ground); border-bottom: 1px solid var(--line); }
+.back { height: 38px; padding: 0 14px 0 10px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-left: 0; border-right: 0; background: var(--turf-2); font-weight: 700; }
+.top h2 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: .04em; text-transform: uppercase; }
+.pill { padding: 6px 12px; background: var(--turf-2); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--chalk-2); white-space: nowrap; }
+.pill b { color: var(--good); }
+.money { margin-left: auto; display: flex; gap: 20px; }
+.money div { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.money small { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--chalk-3); }
+.money strong { font-family: var(--display); font-size: 22px; font-weight: 700; }
+.money .coins strong { color: var(--amber); }
+
+.body { display: grid; grid-template-columns: 176px 1fr; min-height: 0; }
+.rail { background: var(--ground); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 10px 8px; gap: 2px; }
+.tab { height: 46px; padding: 0 14px; border: 0; background: transparent; color: var(--chalk-2); font-weight: 600; font-size: 15px; text-align: left; display: flex; align-items: center; }
+.tab[aria-current="page"] { background: var(--turf-2); color: var(--chalk); box-shadow: inset 3px 0 0 var(--amber); font-weight: 700; }
+.tab .count { margin-left: auto; min-width: 30px; height: 20px; padding: 0 6px; background: var(--turf-3); font-size: 11px; display: grid; place-items: center; }
+.tab .count.hot { background: var(--amber); color: var(--amber-ink); }
+.rail-foot { margin-top: auto; padding: 12px 8px 4px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.rail-foot strong { font-family: var(--display); font-size: 26px; font-weight: 700; }
+.rail-foot span { font-size: 12px; color: var(--chalk-2); }
+.view { min-height: 0; overflow: hidden; }
+
+/* finances */
+.fin { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+.figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.figure { background: var(--turf); padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+.figure strong { font-family: var(--display); font-size: 32px; font-weight: 700; line-height: 1; }
+.figure span { font-size: 12px; color: var(--chalk-2); }
+.meter { height: 8px; background: var(--turf-2); position: relative; }
+.meter i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--sky); }
+.meter i.warn { background: var(--amber); }
+.books { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; }
+.col { padding: 12px 18px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.col + .col { border-left: 1px solid var(--line); }
+.col-head { display: flex; justify-content: space-between; align-items: baseline; }
+.col-head strong { font-family: var(--display); font-size: 22px; }
+.line { display: grid; grid-template-columns: 1fr 70px; gap: 4px 10px; align-items: center; font-size: 13px; }
+.line .bar { grid-column: 1 / -1; height: 5px; background: var(--turf-2); position: relative; }
+.line .bar i { position: absolute; left: 0; top: 0; bottom: 0; }
+.line b { text-align: right; font-weight: 600; }
+.seg { display: flex; background: var(--ground); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 12px; font-size: 12px; font-weight: 700; color: var(--chalk-2); }
+.seg button[aria-pressed="true"] { background: var(--turf-3); color: var(--chalk); }
+
+/* board */
+.board { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+.board section { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.board section + section { border-left: 1px solid var(--line); background: var(--ground); }
+.target { background: var(--turf-2); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.target strong { font-family: var(--display); font-size: 40px; line-height: 1; }
+.ladder { position: relative; height: 34px; background: var(--turf); }
+.ladder .cell { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--turf-2); }
+.ladder .mark { position: absolute; top: -4px; bottom: -4px; width: 4px; }
+.ladder .lab { position: absolute; top: 38px; font-size: 10px; color: var(--chalk-3); transform: translateX(-50%); white-space: nowrap; }
+.conf { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; font-size: 13px; }
+.conf .meter { grid-column: 1 / -1; }
+.pay { display: grid; grid-template-columns: 1fr auto; gap: 7px 12px; font-size: 13px; }
+.pay dt { color: var(--chalk-2); } .pay dd { margin: 0; text-align: right; font-weight: 700; }
+.promo { background: var(--turf-2); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; box-shadow: inset 3px 0 0 var(--good); }
+.promo strong { font-family: var(--display); font-size: 30px; color: var(--good); line-height: 1; }
+.promo span { font-size: 12px; color: var(--chalk-2); }
+
+/* contracts */
+.con { display: grid; grid-template-columns: 1fr 320px; height: 100%; min-height: 0; }
+.con-main { display: grid; grid-template-rows: auto auto 1fr; min-height: 0; }
+.depth { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.pos { background: var(--turf); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.pos-head { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; }
+.pos-head span { color: var(--chalk-2); font-weight: 500; }
+.pips { display: flex; gap: 3px; }
+.pips i { width: 14px; height: 8px; background: var(--turf-3); }
+.pips i.have { background: var(--chalk-2); }
+.pips i.target { outline: 1px solid var(--chalk-3); outline-offset: -1px; }
+.pips i.short { background: var(--bad); }
+.list-head { display: grid; grid-template-columns: 44px 1fr 86px 92px 60px 60px 66px; gap: 10px; padding: 8px 18px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--chalk-3); border-bottom: 1px solid var(--line); background: var(--turf); }
+.list-head span:nth-child(n+4) { text-align: right; }
+.rows { overflow: auto; min-height: 0; }
+.row { display: grid; grid-template-columns: 44px 1fr 86px 92px 60px 60px 66px; gap: 10px; align-items: center; padding: 7px 18px; border: 0; background: transparent; width: 100%; text-align: left; font-size: 13px; }
+.row[aria-selected="true"] { background: var(--turf-3); }
+.badge { width: 40px; height: 40px; display: grid; place-items: center; font-weight: 800; font-size: 18px; }
+.who strong { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who span { font-size: 12px; color: var(--chalk-2); }
+.role { font-size: 11px; font-weight: 700; padding: 3px 7px; background: var(--turf-2); color: var(--chalk-2); justify-self: start; }
+.role.key { background: var(--amber); color: var(--amber-ink); }
+.role.starter { background: var(--turf-3); color: var(--chalk); }
+.left { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; font-weight: 600; }
+.left .meter { width: 100%; height: 4px; }
+.row b { text-align: right; font-weight: 600; }
+.row .ask { color: var(--chalk-2); }
+.detail { background: var(--ground); border-left: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.d-head { display: flex; gap: 12px; align-items: center; }
+.d-head .badge { width: 56px; height: 56px; font-size: 28px; }
+.d-head strong { font-size: 17px; display: block; }
+.d-head span { font-size: 12px; color: var(--chalk-2); }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.facts div { background: var(--turf); padding: 7px 8px; display: flex; flex-direction: column; gap: 3px; }
+.facts b { font-size: 13px; }
+.renew { background: var(--turf); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.renew-top { display: flex; justify-content: space-between; align-items: baseline; }
+.renew-top strong { font-family: var(--display); font-size: 30px; color: var(--amber); }
+.renew-top span { font-size: 12px; color: var(--chalk-2); }
+input[type="range"] { width: 100%; accent-color: var(--amber); }
+.years { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.years button { height: 32px; border: 0; background: var(--turf-2); font-weight: 700; font-size: 12px; color: var(--chalk-2); }
+.years button[aria-pressed="true"] { background: var(--turf-3); color: var(--chalk); }
+.reply { font-size: 12px; min-height: 32px; color: var(--chalk-2); }
+.reply.good { color: var(--good); } .reply.bad { color: var(--bad); }
+.actions { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn { height: 44px; border: 1px solid var(--line); background: var(--turf-2); font-weight: 700; font-size: 13px; }
+.btn.primary { grid-column: 1 / -1; border: 0; background: var(--amber); color: var(--amber-ink); font-size: 16px; }
+.btn.on { background: var(--turf-3); color: var(--good); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.notes div { background: var(--turf); padding: 12px 14px; font-size: 13px; color: var(--chalk-2); line-height: 1.5; }
+.notes b { color: var(--chalk); display: block; margin-bottom: 2px; }
+</style>
+
+<div class="page">
+  <div class="page-head">
+    <h1>Club Hub</h1>
+    <p>Opened from a Club Hub button in the transfer market's top bar. Back returns to the market. Example figures for a Division 3 club, not your save.</p>
+  </div>
+  <div class="stage" id="stage">
+    <div class="screen" id="screen">
+      <header class="top">
+        <button class="back" id="back" type="button"><svg width="12" height="14" viewBox="0 0 12 14"><path d="M9 1 2 7l7 6" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>Market</button>
+        <h2>Club Hub</h2>
+        <span class="pill">Division 3 &nbsp;<b>6th of 16</b></span>
+        <div class="money">
+          <div><small>Squad</small><strong class="num">25/62</strong></div>
+          <div><small>Wage room</small><strong class="num" id="topWage">771</strong></div>
+          <div class="coins"><small>Coins</small><strong class="num">2,515</strong></div>
+        </div>
+      </header>
+      <div class="body">
+        <nav class="rail" aria-label="Club Hub sections">
+          <button class="tab" type="button" data-view="fin" aria-current="page">Finances</button>
+          <button class="tab" type="button" data-view="board">Board</button>
+          <button class="tab" type="button" data-view="con">Contracts <span class="count hot">3</span></button>
+          <div class="rail-foot">
+            <p class="eyebrow">Season net</p>
+            <strong class="num" style="color:var(--good)">+648</strong>
+            <span>11 of 30 league matches played</span>
+          </div>
+        </nav>
+        <main class="view" id="view"></main>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div><b>Finances</b>What you can spend (coins above the wage reserve), wage bill against wage budget, and every category of income and spending this season or last.</div>
+    <div><b>Board</b>The board's expected finish comes from your squad strength against each club in your league, a smooth curve rather than a fixed band. Its confidence follows your live position against that.</div>
+    <div><b>Contracts</b>Every player's role, contract left, wage, renewal ask and what clubs would pay. Renew, list or keep him from one panel. Kept players get no bids you didn't ask for.</div>
+  </div>
+</div>
+
+<template id="t-fin">
+  <div class="fin">
+    <div class="figures">
+      <div class="figure"><p class="eyebrow">Spendable now</p><strong class="num" style="color:var(--amber)">2,318</strong><span>Coins after a reserve of 197 for wages</span></div>
+      <div class="figure"><p class="eyebrow">Wage bill a season</p><strong class="num">789 <small style="font-size:16px;color:var(--chalk-3)">/ 1,560</small></strong><div class="meter"><i style="width:51%"></i></div><span>771 room for new wages or renewals</span></div>
+      <div class="figure"><p class="eyebrow">Season so far</p><strong class="num" style="color:var(--good)">+648</strong><span>1,957 in, 1,309 out</span></div>
+    </div>
+    <div class="books">
+      <div class="col">
+        <div class="col-head"><p class="eyebrow">Income</p><div class="seg" role="group" aria-label="Season"><button type="button" aria-pressed="true" data-season="0">This season</button><button type="button" aria-pressed="false" data-season="1">Last season</button></div></div>
+        <div id="income"></div>
+      </div>
+      <div class="col">
+        <div class="col-head"><p class="eyebrow">Spending</p><strong class="num" id="spendTotal" style="color:var(--bad)"></strong></div>
+        <div id="spend"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="t-board">
+  <div class="board">
+    <section>
+      <div class="target">
+        <p class="eyebrow">Board target this season</p>
+        <strong>Finish around 5th</strong>
+        <span style="font-size:12px;color:var(--chalk-2)">Your squad strength of 66 ranks you 5th of 16 in Division 3. Stronger clubs weigh on the expectation by how much stronger they are.</span>
+        <div class="ladder" id="ladder"></div>
+        <div style="height:14px"></div>
+      </div>
+      <div class="conf">
+        <span>Board confidence</span><b class="num" style="color:var(--good)">Steady &nbsp;62%</b>
+        <div class="meter"><i style="width:62%;background:var(--good)"></i></div>
+      </div>
+      <p style="margin:0;font-size:12px;color:var(--chalk-2)">One place behind target. Confidence rises and falls smoothly with your position against the target and with results.</p>
+    </section>
+    <section>
+      <p class="eyebrow">What Division 3 pays</p>
+      <dl class="pay num">
+        <dt>Win / draw / loss</dt><dd>58 / 23 / 7</dd>
+        <dt>Each goal (up to 6)</dt><dd>5</dd>
+        <dt>Clean sheet</dt><dd>9</dd>
+        <dt>Home gate at 9,000 fans</dt><dd>35</dd>
+        <dt>TV rights + sponsor, season end</dt><dd>640</dd>
+        <dt>League prize, champion to 16th</dt><dd>320 to 32</dd>
+        <dt>League prize at your 6th</dt><dd>224</dd>
+      </dl>
+      <div class="promo">
+        <p class="eyebrow">Promotion is worth</p>
+        <strong class="num">+315 now, +500 a season after</strong>
+        <span>A 315 promotion bonus, then Division 2 pays about 2,100 a season against 1,600 here.</span>
+      </div>
+    </section>
+  </div>
+</template>
+
+<template id="t-con">
+  <div class="con">
+    <div class="con-main">
+      <div class="depth" id="depth"></div>
+      <div class="list-head"><span></span><span>Player</span><span>Role</span><span>Contract</span><span>Wage</span><span>Asks</span><span>Clubs pay</span></div>
+      <div class="rows" id="rows" role="listbox" aria-label="Your squad"></div>
+    </div>
+    <aside class="detail" id="detail"></aside>
+  </div>
+</template>
+
+<script>
+const INCOME = [["Match prize money", 427, 520], ["Gate receipts", 208, 190], ["Goal & clean sheet bonuses", 118, 140], ["Player sales", 1194, 610], ["Cup prize money", 5, 60], ["Awards & objectives", 5, 40]];
+const SPEND = [["Wages", 620, 590], ["Player purchases", 610, 1200], ["Training", 42, 30], ["Medical treatment", 25, 18], ["Fitness (energy refills)", 12, 9]];
+const DEPTH = [["GK", 2, 2, 2, 3], ["DEF", 8, 5, 7, 10], ["MID", 9, 6, 8, 12], ["FWD", 2, 2, 3, 5]];
+const SQUAD = [
+  { n: "K. Coman", p: "MID", r: 79, role: "Key", left: 0.8, wage: 118, ask: 141, pay: 1420, ai: 0.93 },
+  { n: "J. Ramsey", p: "FWD", r: 74, role: "Starter", left: 1.6, wage: 84, ask: 92, pay: 890, ai: 0.96 },
+  { n: "D. Costa", p: "DEF", r: 71, role: "Starter", left: 0.4, wage: 66, ask: 76, pay: 730, ai: 0.9 },
+  { n: "M. Ortega", p: "GK", r: 70, role: "Starter", left: 2.6, wage: 61, ask: 64, pay: 690, ai: 0.95 },
+  { n: "T. Walsh", p: "MID", r: 68, role: "Rotation", left: 0.9, wage: 48, ask: 47, pay: 470, ai: 0.94 },
+  { n: "S. Okafor", p: "DEF", r: 66, role: "Rotation", left: 3.4, wage: 41, ask: 40, pay: 400, ai: 0.97 },
+  { n: "L. Brandt", p: "MID", r: 62, role: "Surplus", left: 1.2, wage: 30, ask: 26, pay: 250, ai: 0.92 },
+  { n: "R. Iqbal", p: "FWD", r: 60, role: "Surplus", left: 4.1, wage: 24, ask: 21, pay: 210, ai: 0.98 }
+];
+const state = { view: "fin", season: 0, sel: 0, wage: {}, years: {}, keep: {}, listed: {}, renewed: {}, reply: {} };
+const view = document.getElementById("view");
+const mix = (t) => { const a = [0x1f, 0x48, 0x3e], b = [0xf2, 0xb2, 0x33]; return "rgb(" + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",") + ")"; };
+const badge = (r) => { const t = Math.max(0, Math.min(1, (r - 55) / 40)); return `<span class="badge num" style="background:${mix(t)};color:${t > .55 ? "var(--amber-ink)" : "var(--chalk)"}">${r}</span>`; };
+const fmt = (v) => v.toLocaleString("en-US");
+
+function lines(el, rows, col, colour) {
+  const max = Math.max(...rows.map((r) => r[col]), 1);
+  el.innerHTML = rows.filter((r) => r[col]).map((r) => `<div class="line"><span>${r[0]}</span><b class="num">${fmt(r[col])}</b><div class="bar"><i style="width:${(r[col] / max) * 100}%;background:${colour}"></i></div></div>`).join("");
+}
+
+function renderFin() {
+  view.innerHTML = document.getElementById("t-fin").innerHTML;
+  const col = 1 + state.season;
+  lines(view.querySelector("#income"), INCOME, col, "var(--good)");
+  lines(view.querySelector("#spend"), SPEND, col, "var(--bad)");
+  view.querySelector("#spendTotal").textContent = "-" + fmt(SPEND.reduce((s, r) => s + r[col], 0));
+  view.querySelectorAll("[data-season]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(+b.dataset.season === state.season));
+    b.onclick = () => { state.season = +b.dataset.season; renderFin(); };
+  });
+}
+
+function renderBoard() {
+  view.innerHTML = document.getElementById("t-board").innerHTML;
+  const lad = view.querySelector("#ladder");
+  let h = "";
+  for (let i = 0; i < 16; i++) h += `<span class="cell" style="left:${(i / 16) * 100}%;width:${100 / 16}%;${i < 2 ? "background:rgba(143,224,168,.18)" : i > 13 ? "background:rgba(255,143,107,.14)" : ""}"></span>`;
+  const at = (p) => ((p - 0.5) / 16) * 100;
+  h += `<span class="mark" style="left:calc(${at(5)}% - 2px);background:var(--amber)"></span><span class="lab" style="left:${at(5)}%;color:var(--amber)">Target 5th</span>`;
+  h += `<span class="mark" style="left:calc(${at(6)}% - 2px);background:var(--chalk)"></span><span class="lab" style="left:${at(6) + 5}%;color:var(--chalk)">Now 6th</span>`;
+  h += `<span class="lab" style="left:${at(1.5)}%">Promotion</span>`;
+  lad.innerHTML = h;
+}
+
+function roleClass(r) { return r === "Key" ? "role key" : r === "Starter" ? "role starter" : "role"; }
+
+function renderCon() {
+  view.innerHTML = document.getElementById("t-con").innerHTML;
+  view.querySelector("#depth").innerHTML = DEPTH.map(([p, have, min, target, max]) => {
+    let pips = "";
+    for (let i = 0; i < max; i++) pips += `<i class="${i < have ? "have" : i < min ? "short" : ""} ${i === target - 1 ? "target" : ""}"></i>`;
+    const note = have < min ? "below minimum" : have < target ? "thin" : have > target ? "surplus" : "on target";
+    return `<div class="pos"><div class="pos-head">${p} ${have}<span>${note} (target ${target})</span></div><div class="pips">${pips}</div></div>`;
+  }).join("");
+  const rows = view.querySelector("#rows");
+  rows.innerHTML = SQUAD.map((p, i) => {
+    const left = state.renewed[i] ? state.renewed[i] : p.left;
+    const w = Math.min(1, left / 4) * 100;
+    return `<button class="row" type="button" role="option" aria-selected="${i === state.sel}" data-i="${i}">${badge(p.r)}<span class="who"><strong>${p.n}</strong><span>${p.p}${state.listed[i] ? " · Listed" : state.keep[i] ? " · Kept" : ""}</span></span><span class="${roleClass(p.role)}">${p.role}</span><span class="left num">${left < 1 ? "Ends this season" : left.toFixed(1) + " seasons"}<span class="meter"><i class="${left < 1 ? "warn" : ""}" style="width:${w}%"></i></span></span><b class="num">${fmt(state.renewed[i] ? state.wage[i] : p.wage)}</b><b class="num ask">${state.renewed[i] ? "-" : fmt(p.ask)}</b><b class="num">${fmt(p.pay)}</b></button>`;
+  }).join("");
+  rows.querySelectorAll(".row").forEach((r) => (r.onclick = () => { state.sel = +r.dataset.i; renderCon(); }));
+  renderDetail();
+}
+
+function renderDetail() {
+  const i = state.sel, p = SQUAD[i];
+  if (state.wage[i] == null) state.wage[i] = Math.round(p.ask * 0.95);
+  if (state.years[i] == null) state.years[i] = 3;
+  const d = view.querySelector("#detail");
+  const renewed = state.renewed[i];
+  const reply = state.reply[i] || ["", ""];
+  let yrs = "";
+  for (let y = 1; y <= 5; y++) yrs += `<button type="button" aria-pressed="${state.years[i] === y}" data-y="${y}">${y} yr</button>`;
+  d.innerHTML = `<div class="d-head">${badge(p.r)}<div><strong>${p.n}</strong><span>${p.p} · ${p.role}</span></div></div>
+    <div class="facts"><div><p class="eyebrow">Contract</p><b class="num">${renewed ? renewed + " seasons" : p.left.toFixed(1) + " seasons"}</b></div><div><p class="eyebrow">Wage</p><b class="num">${fmt(renewed ? state.wage[i] : p.wage)}</b></div><div><p class="eyebrow">Clubs pay</p><b class="num">${fmt(p.pay)}</b></div></div>
+    <div class="renew">${renewed ? `<p class="eyebrow">Contract renewed</p><div class="renew-top"><strong class="num">${fmt(state.wage[i])}</strong><span>a season for ${renewed} years</span></div>` : `
+      <div class="renew-top"><div><p class="eyebrow">Your wage offer</p><strong class="num" id="w">${fmt(state.wage[i])}</strong></div><span>He asks ${fmt(p.ask)} &nbsp;(${Math.round((state.wage[i] / p.ask) * 100)}%)</span></div>
+      <input type="range" id="slider" min="${Math.round(p.ask * 0.6)}" max="${Math.round(p.ask * 1.3)}" value="${state.wage[i]}" aria-label="Wage offer">
+      <div class="years" role="group" aria-label="Contract length">${yrs}</div>`}
+      <div class="reply ${reply[0]}">${reply[1]}</div></div>
+    <div class="actions">${renewed ? "" : `<button class="btn primary" type="button" id="renew">Offer renewal</button>`}
+      <button class="btn ${state.listed[i] ? "on" : ""}" type="button" id="list">${state.listed[i] ? "Listed" : "List for sale"}</button>
+      <button class="btn ${state.keep[i] ? "on" : ""}" type="button" id="keep">${state.keep[i] ? "Kept" : "Keep him"}</button></div>`;
+  const s = d.querySelector("#slider");
+  if (s) s.oninput = () => { state.wage[i] = +s.value; d.querySelector("#w").textContent = fmt(+s.value); d.querySelector(".renew-top span").innerHTML = `He asks ${fmt(p.ask)} &nbsp;(${Math.round((+s.value / p.ask) * 100)}%)`; };
+  d.querySelectorAll("[data-y]").forEach((b) => (b.onclick = () => { state.years[i] = +b.dataset.y; renderDetail(); }));
+  const r = d.querySelector("#renew");
+  if (r) r.onclick = () => {
+    const accept = p.ask * p.ai;
+    if (state.wage[i] >= accept) { state.renewed[i] = state.years[i]; state.reply[i] = ["good", `He signs for ${state.years[i]} years at ${fmt(state.wage[i])}.`]; renderCon(); return; }
+    const short = (accept - state.wage[i]) / accept;
+    state.reply[i] = short > 0.2 ? ["bad", "That is well short. His patience drops sharply."] : ["", `Close. He would sign for ${fmt(Math.round((state.wage[i] + p.ask) / 2))}.`];
+    renderDetail();
+  };
+  d.querySelector("#list").onclick = () => { state.listed[i] = !state.listed[i]; if (state.listed[i]) state.keep[i] = false; renderCon(); };
+  d.querySelector("#keep").onclick = () => { state.keep[i] = !state.keep[i]; if (state.keep[i]) state.listed[i] = false; renderCon(); };
+}
+
+function render() {
+  document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-current", t.dataset.view === state.view ? "page" : "false"));
+  ({ fin: renderFin, board: renderBoard, con: renderCon })[state.view]();
+}
+document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => { state.view = t.dataset.view; render(); }));
+document.getElementById("back").onclick = () => { state.view = "fin"; render(); };
+
+const stage = document.getElementById("stage"), screen = document.getElementById("screen");
+function fit() { const s = stage.clientWidth / 1024; screen.style.transform = `scale(${s})`; stage.style.height = 640 * s + "px"; }
+new ResizeObserver(fit).observe(stage);
+fit();
+render();
+</script>

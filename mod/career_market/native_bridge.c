@@ -200,7 +200,8 @@ typedef struct {
     int32_t market_index[4][10];             /* smoothed price index per position and rating band, % */
     int32_t signing_player[32];              /* the user's signings, locked until next season */
     int32_t signing_season[32];
-    int32_t reserved[32];
+    int32_t keep_player[16];                 /* v38: players the user keeps (player id + 1, 0 = free) */
+    int32_t reserved[16];
 } MarketExt;
 static MarketExt g_ext __attribute__((aligned(8)));
 static PlayerContract g_contract_extension[CONTRACT_EXTENSION_CAPACITY]
@@ -1961,6 +1962,8 @@ static int32_t ai_buy_limit(int32_t account_index) {
 
 /* Best affordable signing for an AI club: upgrades its weakest starting positions first, then
  * fills thin positions with decent depth. Returns the cached player index or -1. */
+static int32_t user_is_kept(int32_t player_id);
+
 static int32_t ai_find_target(int32_t buyer_index, int32_t fee_room, int32_t wage_room,
                               int32_t allow_unlisted_user, int32_t *out_fee, int32_t *out_wage,
                               int32_t *out_max) {
@@ -1991,7 +1994,7 @@ static int32_t ai_find_target(int32_t buyer_index, int32_t fee_room, int32_t wag
         if (user_seller) {
             if (user_signing_locked(player->player_id)) continue;
             if (!player->listed_for_sale) {
-                if (!allow_unlisted_user || player_role(player) < ROLE_STARTER) continue;
+                if (!allow_unlisted_user || player_role(player) < ROLE_STARTER || user_is_kept(player->player_id)) continue;
                 unsolicited = 1;
             }
             if (g_total_count[seller_index] <= USER_SQUAD_MIN) continue;
@@ -2497,10 +2500,38 @@ static int32_t toggle_user_listing(int32_t player_id) {
         if (g_user_listed_player_ids[i] >= 0) continue;
         g_user_listed_player_ids[i] = player_id;
         g_players[player_index].listed_for_sale = 1;
+        for (int32_t k = 0; k < 16; ++k) if (g_ext.keep_player[k] == player_id + 1) g_ext.keep_player[k] = 0;
         g_market_dirty = 1;
         return 0;
     }
     return -2;
+}
+
+/* v38: a kept player gets no unsolicited bids; keeping him takes him off the sale list. */
+static int32_t user_is_kept(int32_t player_id) {
+    if (player_id < 0) return 0;
+    for (int32_t k = 0; k < 16; ++k) if (g_ext.keep_player[k] == player_id + 1) return 1;
+    return 0;
+}
+
+/* 1 kept, 0 released, -1 no room (16 at most), -2 not the user's player. */
+static int32_t user_keep_toggle(int32_t player_id) {
+    int32_t player_index = find_cached_player(player_id);
+    if (player_index < 0 || g_players[player_index].owner_id != USER_TEAM_ID) return -2;
+    for (int32_t k = 0; k < 16; ++k) {
+        if (g_ext.keep_player[k] != player_id + 1) continue;
+        g_ext.keep_player[k] = 0;
+        g_market_dirty = 1;
+        return 0;
+    }
+    for (int32_t k = 0; k < 16; ++k) {
+        if (g_ext.keep_player[k] > 0) continue;
+        if (user_listing_slot(player_id) >= 0) toggle_user_listing(player_id);
+        g_ext.keep_player[k] = player_id + 1;
+        g_market_dirty = 1;
+        return 1;
+    }
+    return -1;
 }
 
 
@@ -3109,6 +3140,77 @@ static int32_t commit_user_contract_renewal(uint32_t base, int32_t player_id,
     g_market_dirty = 1;
     save_profile(base);
     return 1;
+}
+
+/*
+ * v38: contract renewal talks for the Club Hub. He signs at or above a hidden point between 88% and 100%
+ * of his demand (fixed per player and season). Below it he counters, and every short offer uses up
+ * patience in proportion to how short it is: 0.4 of a strike plus 4 strikes per 100% short, 3 strikes
+ * end the talks until next season. Returns 1 signed, 0 countered (*out_counter), -4 talks over,
+ * -3 over the wage room, -2 no contract to renew, -1 bad input.
+ */
+#define RENEW_TALK_KEY(season) (0x40000000 | ((season) & 0xFFFF))
+
+static int32_t renewal_accept_point(const MarketPlayer *player, int32_t demand) {
+    return wage_accept_point(player, demand, RENEW_TALK_KEY(g_market.season));
+}
+
+/* A talk slot for a renewal: never one that holds a running transfer talk (this window) or another
+ * renewal of this season. */
+static TalkMemory *renewal_talk(int32_t player_id, int32_t create) {
+    int32_t key = RENEW_TALK_KEY(g_market.season);
+    TalkMemory *free_slot = 0;
+    for (int32_t i = 0; i < TALK_CAPACITY; ++i) {
+        TalkMemory *talk = &g_ext.talks[i];
+        if (talk->player_id == player_id && talk->window_id == key) return talk;
+        int32_t busy = talk->player_id >= 0 && (talk->window_id == key || talk->window_id == g_market.window_id);
+        if (!busy && !free_slot) free_slot = talk;
+    }
+    if (!create || !free_slot) return 0;
+    free_slot->player_id = player_id;
+    free_slot->window_id = key;
+    free_slot->strikes = 0;
+    free_slot->best_bid = 0;
+    g_market_dirty = 1;
+    return free_slot;
+}
+
+static int32_t renewal_patience_left(int32_t player_id) {
+    TalkMemory *talk = renewal_talk(player_id, 0);
+    int32_t left = 3000 - (talk ? talk->strikes : 0);
+    return left > 0 ? left : 0;
+}
+
+static int32_t hub_renewal_offer(uint32_t base, int32_t player_id, int32_t wage, int32_t years,
+                                 int32_t *out_counter) {
+    if (out_counter) *out_counter = 0;
+    if (!base || wage <= 0 || years < 1 || years > 5) return -1;
+    int32_t player_index = find_cached_player(player_id);
+    int32_t account_index = find_account(USER_TEAM_ID);
+    if (player_index < 0 || account_index < 0 || g_players[player_index].owner_id != USER_TEAM_ID ||
+        !market_contract_available(player_id, USER_TEAM_ID)) return -2;
+    if (renewal_patience_left(player_id) <= 0) return -4;
+    MarketPlayer *player = &g_players[player_index];
+    ClubAccount *club = &g_market.clubs[account_index];
+    if (wage > clamp_add(player->wage, account_wage_room(club))) return -3;
+    int32_t demand = renewal_wage_demand(player, USER_TEAM_ID);
+    int32_t accept = renewal_accept_point(player, demand);
+    if (wage >= accept) {
+        int32_t result = commit_user_contract_renewal(base, player_id, wage, years);
+        return result > 0 ? 1 : result;
+    }
+    TalkMemory *talk = renewal_talk(player_id, 1);
+    if (!talk) return -4;
+    int32_t short_pm = mul_div(accept - wage, 1000, accept);
+    talk->strikes += 400 + short_pm * 4;
+    if (wage > talk->best_bid) talk->best_bid = wage;
+    g_market_dirty = 1;
+    if (talk->strikes >= 3000) return -4;
+    /* he meets you part of the way, never below his own point */
+    int32_t counter = wage + (demand - wage) * 2 / 3;
+    if (counter < accept) counter = accept;
+    if (out_counter) *out_counter = counter;
+    return 0;
 }
 
 __attribute__((visibility("default")))

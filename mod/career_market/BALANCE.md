@@ -400,3 +400,10 @@ python mod/build_apk.py --base-apk mod/build/DLS18_career_market_ui_alpha_fixed2
 
 Tune the constants at the top of `native_bridge.c` (the "Balance model" block), rerun the harness, and compare
 `balance_results.txt`.
+
+## Contract renewals and keeping players (v38, Club Hub)
+- **Demand:** renewal_wage_demand, unchanged.
+- **Acceptance:** he signs at or above a hidden point between 88% and 100% of that demand, fixed per player and season.
+- **Counters:** a lower offer gets a counter two thirds of the way to his demand, never below his point.
+- **Patience:** each short offer uses 0.4 of a strike plus 4 strikes per 100% short. Three strikes end the talks until next season.
+- **Keep:** the user may keep up to 16 players. A kept player gets no unsolicited AI bids. Listing a player releases his keep.
