@@ -58,7 +58,8 @@ enum {
     TM_HIT_NONE, TM_HIT_BACK, TM_HIT_TAB, TM_HIT_SEARCH, TM_HIT_POS, TM_HIT_SORT, TM_HIT_ROW, TM_HIT_STAR,
     TM_HIT_LIST, TM_HIT_OFFER, TM_HIT_SHORTLIST, TM_HIT_SLIDER, TM_HIT_YEARS, TM_HIT_SUBMIT, TM_HIT_ACCEPT,
     TM_HIT_LEAVE, TM_HIT_WAGE_ACCEPT, TM_HIT_WAGE_LOWER, TM_HIT_INBID_ACCEPT, TM_HIT_INBID_COUNTER,
-    TM_HIT_INBID_REJECT, TM_HIT_LISTTOGGLE, TM_HIT_SHEET
+    TM_HIT_INBID_REJECT, TM_HIT_LISTTOGGLE, TM_HIT_SHEET, TM_HIT_FEE_MINUS, TM_HIT_FEE_PLUS, TM_HIT_FEE_TYPE,
+    TM_HIT_CLEAR_SEARCH
 };
 enum { TM_LOG_CLUB, TM_LOG_YOU, TM_LOG_RIVAL, TM_LOG_GOOD, TM_LOG_BAD };
 
@@ -72,12 +73,13 @@ typedef void (*TmTouchPosFn)(int32_t *, int32_t);
 typedef int32_t (*TmTouchFlagFn)(int32_t);
 typedef void (*TmDisplayFn)(void *, int32_t);
 typedef int32_t (*TmStatFn)(PlayerInfo *);
+typedef void (*TmAlignFn)(int32_t);
 
 typedef struct {
     int32_t player_id;
     int32_t index;              /* g_players index */
     int32_t offer_id;           /* Offers tab */
-    int32_t rating, position, price, value, trend;
+    int32_t rating, position, price, value, trend, block;
     uint8_t starred, talks, rivals, listed, incoming;
     uint16_t name[40];
     uint16_t sub[64];
@@ -87,11 +89,13 @@ typedef struct {
 typedef struct { float x, y, w, h; int32_t kind, value; } TmHit;
 
 static void tm_reset_state(void);
+static void tm_back(uint32_t base);
+static void tm_open_fee_keyboard(uint32_t base);
 
 typedef struct {
     int32_t loaded;
     int32_t player_id, index;
-    int32_t rating, position, ask, value, trend, wage, tenths, join_pm, rivals;
+    int32_t rating, position, ask, value, trend, wage, tenths, join_pm, rivals, block;
     int32_t stats[8], stat_count;
     uint16_t name[40], club[48], role[16], rival_name[48];
     uint16_t stat_labels[8][14];
@@ -111,7 +115,8 @@ static struct {
     int32_t sel_id;
     TmDetail detail;
     /* negotiation sheet */
-    int32_t neg_open, neg_player, neg_offer, neg_fee, neg_years, neg_lo, neg_hi;
+    int32_t neg_open, neg_player, neg_offer, neg_fee, neg_years, neg_lo, neg_hi, neg_ask;
+    uint16_t neg_club[48];      /* the selling club and its ask when talks opened (he may be ours afterwards) */
     uint16_t log[TM_LOG_LINES][TM_TEXT];
     uint8_t log_kind[TM_LOG_LINES];
     int32_t log_count;
@@ -132,6 +137,13 @@ static struct {
 static void tm_rect(float x, float y, float w, float h, uint32_t colour) {
     if (w <= 0.0f || h <= 0.0f) return;
     ((TmRectFn)(g_tm.base + 0x28AF85))(x * g_tm.s, y * g_tm.s, w * g_tm.s, h * g_tm.s, colour);
+}
+
+/* FE2D_DrawTriangle(x1, y1, x2, y2, x3, y3, bool, colour) 0x28BA64 */
+typedef void (*TmTriangleFn)(float, float, float, float, float, float, int32_t, uint32_t);
+static void tm_triangle(float x1, float y1, float x2, float y2, float x3, float y3, uint32_t colour) {
+    float s = g_tm.s;
+    ((TmTriangleFn)(g_tm.base + 0x28BA65))(x1 * s, y1 * s, x2 * s, y2 * s, x3 * s, y3 * s, 0, colour);
 }
 
 static void tm_hit(float x, float y, float w, float h, int32_t kind, int32_t value) {
@@ -172,8 +184,42 @@ static void tm_text(const uint16_t *text, float x, float y, float px, uint32_t c
         }
     }
     float left = align == TM_ALIGN_CENTER ? x - w * 0.5f : align == TM_ALIGN_RIGHT ? x - w : x;
+    /* FTTFont_SetAlign(left): the font keeps the last caller's alignment (the stock screens leave it centred,
+     * which put every v37 label half a width to the left). We align ourselves from the measured width. */
+    ((TmAlignFn)(g_tm.base + 0x38E301))(0);
     if (bold) ((TmBoldFn)(g_tm.base + 0x293E29))(buf, left * g_tm.s, y * g_tm.s, colour);
     else ((TmPrintFn)(g_tm.base + 0x38E8C9))(left * g_tm.s, y * g_tm.s, buf);
+}
+
+/* Word-wrapped text; returns the number of lines drawn (at most max_lines, the last one ellipsised). */
+static int32_t tm_text_wrap(const uint16_t *text, float x, float y, float px, uint32_t colour, float max_w,
+                            int32_t max_lines, float line_h) {
+    static uint16_t line[160];
+    int32_t pos = 0, lines = 0;
+    while (text && text[pos] && lines < max_lines) {
+        while (text[pos] == ' ') ++pos;
+        int32_t n = 0, last_space = -1;
+        while (text[pos + n] && n < 159) {
+            line[n] = text[pos + n];
+            line[n + 1] = 0;
+            if (tm_text_width(line, px) > max_w && n > 0) break;
+            if (text[pos + n] == ' ') last_space = n;
+            ++n;
+        }
+        int32_t take = n;
+        if (text[pos + n] && last_space > 0 && lines + 1 < max_lines) take = last_space;
+        line[take] = 0;
+        if (lines + 1 == max_lines && text[pos + take]) {
+            /* the last allowed line: keep the rest and let tm_text ellipsise it */
+            int32_t k = 0;
+            while (text[pos + k] && k < 159) { line[k] = text[pos + k]; ++k; }
+            line[k] = 0;
+        }
+        tm_text(line, x, y + (float)lines * line_h, px, colour, 0, max_w, 0);
+        ++lines;
+        pos += take;
+    }
+    return lines;
 }
 
 static const uint16_t *tm_w(const char *ascii) {
@@ -325,6 +371,7 @@ static void tm_fill_row(uint32_t base, TmRow *row, int32_t index, int32_t user_i
     MarketOffer *offer = tm_user_offer_for(player->player_id);
     row->talks = offer != 0;
     row->listed = (uint8_t)user_player_is_listed(player->player_id);
+    row->block = player->owner_id != USER_TEAM_ID ? user_bid_block(base, player, user_index) : 0;
     row->rivals = 0;
     tm_player_name(base, player->player_id, row->name, 40);
     MarketUiText t;
@@ -427,8 +474,14 @@ static void tm_build(uint32_t base) {
             MarketOffer *offer = tm_user_offer_for(row->player_id);
             MarketUiText t;
             ui_text_reset(&t, row->extra, 64);
-            ui_text_append_ascii(&t, "Value ");
+            ui_text_append_ascii(&t, tm_pos_label(row->position));
+            ui_text_append_ascii(&t, "  Value ");
             tm_append_money(&t, row->value);
+            int32_t tenths = contract_tenths_left(row->player_id, USER_TEAM_ID);
+            ui_text_append_ascii(&t, "  Contract ");
+            ui_text_append_i32(&t, tenths / 10);
+            ui_text_append_char(&t, '.');
+            ui_text_append_i32(&t, tenths % 10);
             if (offer && offer->seller_id == USER_TEAM_ID) {
                 ui_text_append_ascii(&t, "  Bid ");
                 tm_append_money(&t, offer->status == CM_OFFER_WAIT_USER_SELLER_COUNTER ? offer->counter_fee : offer->fee);
@@ -483,6 +536,7 @@ static void tm_load_detail(uint32_t base) {
     d->wage = own ? player->wage : transfer_wage_demand(player, user_index, player->owner_index);
     d->tenths = contract_tenths_left(player->player_id, player->owner_id);
     d->join_pm = own ? 1000 : tm_join_pm(player, user_index);
+    d->block = own ? 0 : user_bid_block(base, player, user_index);
     tm_player_name(base, player->player_id, d->name, 40);
     tm_team_name(base, player->owner_id, d->club, 48);
     RoleMix mix = role_mix(player);
@@ -567,6 +621,8 @@ static void tm_open_sheet(uint32_t base, int32_t player_id) {
     g_tm.neg_years = 3;
     g_tm.neg_lo = round5(ask / 2);
     g_tm.neg_hi = round5(mul_div(ask, 130, 100));
+    g_tm.neg_ask = ask;
+    tm_team_name(base, player->owner_id, g_tm.neg_club, 48);
     g_tm.log_count = 0;
     MarketOffer *offer = tm_user_offer_for(player_id);
     g_tm.neg_offer = offer && offer->buyer_id == USER_TEAM_ID ? offer->offer_id : -1;
@@ -588,7 +644,6 @@ static void tm_open_sheet(uint32_t base, int32_t player_id) {
         ui_text_append_char(&t, '.');
     }
     tm_log(TM_LOG_CLUB, g_tm.line);
-    (void)base;
 }
 
 static void tm_log_event(uint32_t base, MarketOffer *offer) {
@@ -682,7 +737,12 @@ static void tm_log_event(uint32_t base, MarketOffer *offer) {
 static const char *tm_bid_error(int32_t code) {
     switch (code) {
     case -2: return "The transfer window is closed.";
-    case -6: return "You already have talks running this window. Finish them in Offers first.";
+    case -5: return "He is not for sale.";
+    case -18: return "You have made all the signings allowed this window.";
+    case -19: return "His club is busy with another deal. Try again after the next match.";
+    case -20: return "You already have 3 bids running. Finish one in Offers first.";
+    case -21: return "You are already in talks for him.";
+    case -8: return "He cannot move right now.";
     case -7: return "That fee or wage is beyond your budget.";
     case -12: return "You would not have enough coins left for wages.";
     case -11: return "He does not want to join your club this window.";
@@ -691,6 +751,21 @@ static const char *tm_bid_error(int32_t code) {
     case -17: return "His club cannot let a player go right now.";
     case -10: return "They rejected the bid and talks are over.";
     default: return (const char *)0;
+    }
+}
+
+/* Short status for a list row. */
+static const char *tm_block_short(int32_t code) {
+    switch (code) {
+    case 0: return (const char *)0;
+    case -21: return "In talks";
+    case -11: return "Won't join";
+    case -15: return "Club keeps him";
+    case -16: return "Talks ended";
+    case -17: case -8: case -5: return "Not for sale";
+    case -19: return "Club busy";
+    case -2: return "Window closed";
+    default: return "Can't bid now";
     }
 }
 
@@ -799,6 +874,38 @@ static int32_t tm_cb_search(int32_t selection) {
     return 1;
 }
 
+static int32_t tm_cb_fee(int32_t selection) {
+    uint32_t base = g_ui_base;
+    void *box = g_ui_keyboard_box;
+    g_ui_keyboard_box = (void *)0;
+    if (selection == 0 || !box) return 1;
+    void *field = *(void **)((char *)box + 0xCE4);
+    const uint16_t *text = field ? ((TextFieldGetTextFn)(base + 0x241FB5))(field) : (const uint16_t *)0;
+    int32_t value = 0, digits = 0;
+    for (int32_t i = 0; text && text[i] && i < 16; ++i) {
+        if (text[i] >= '0' && text[i] <= '9' && value < 100000000) { value = value * 10 + (text[i] - '0'); ++digits; }
+    }
+    if (!digits || value <= 0) {
+        tm_toast(tm_w("Type the fee in coins, digits only."));
+        return 1;
+    }
+    value = round5(value);
+    if (value > g_tm.neg_hi) g_tm.neg_hi = value;
+    if (value < g_tm.neg_lo) g_tm.neg_lo = value;
+    g_tm.neg_fee = value;
+    return 1;
+}
+
+static void tm_open_fee_keyboard(uint32_t base) {
+    ui_set_title("Your Fee Offer");
+    MarketUiText t;
+    ui_text_reset(&t, g_ui_keyboard_initial, 48);
+    ui_text_append_i32(&t, g_tm.neg_fee);
+    ui_text_reset(&t, g_ui_description, MARKET_UI_TEXT_CAPACITY);
+    ui_text_append_ascii(&t, "Fee in coins");
+    if (!ui_show_keyboard(base, 9, tm_cb_fee)) g_ui_keyboard_box = (void *)0;
+}
+
 static void tm_open_search(uint32_t base) {
     ui_set_title("Search Players");
     MarketUiText t;
@@ -816,11 +923,17 @@ static void tm_draw_top(uint32_t base) {
     float dw = g_tm.dw;
     tm_rect(0, 0, dw, TM_TOP_H, TM_GROUND);
     tm_rect(0, TM_TOP_H - 1.0f, dw, 1.0f, TM_LINE);
-    tm_text(tm_w("<"), 30.0f, 12.0f, 28.0f, TM_CHALK2, TM_ALIGN_CENTER, 0, 1);
-    tm_hit(6.0f, 6.0f, 48.0f, 44.0f, TM_HIT_BACK, 0);
+    /* Back: a real button (closes the negotiation sheet first, then leaves the screen) */
+    tm_rect(10.0f, 9.0f, 88.0f, 38.0f, TM_TURF2);
+    tm_rect(10.0f, 9.0f, 88.0f, 1.0f, TM_LINE);
+    tm_rect(10.0f, 46.0f, 88.0f, 1.0f, TM_LINE);
+    tm_triangle(20.0f, 28.0f, 30.0f, 20.0f, 30.0f, 36.0f, TM_CHALK);   /* arrow head + shaft */
+    tm_rect(29.0f, 26.5f, 7.0f, 3.0f, TM_CHALK);
+    tm_text(tm_w(g_tm.neg_open ? "Close" : "Back"), 42.0f, 19.0f, 15.0f, TM_CHALK, TM_ALIGN_LEFT, 0, 1);
+    tm_hit(4.0f, 2.0f, 104.0f, 52.0f, TM_HIT_BACK, 0);
     const uint16_t *title = tm_w("TRANSFER MARKET");
-    tm_text(title, 62.0f, 15.0f, 24.0f, TM_CHALK, TM_ALIGN_LEFT, 0, 1);
-    float x = 62.0f + tm_text_width(title, 24.0f) + 16.0f;
+    tm_text(title, 116.0f, 15.0f, 24.0f, TM_CHALK, TM_ALIGN_LEFT, 0, 1);
+    float x = 116.0f + tm_text_width(title, 24.0f) + 16.0f;
     int32_t open = g_market.window_id >= 0;
     MarketUiText t;
     ui_text_reset(&t, g_tm.line, 160);
@@ -929,15 +1042,44 @@ static void tm_draw_tools(float x, float w) {
     float y = TM_TOP_H;
     tm_rect(x, y, w, TM_TOOLS_H, TM_TURF);
     tm_rect(x, y + TM_TOOLS_H - 1.0f, w, 1.0f, TM_LINE);
-    if (g_tm.tab == TM_TAB_OFFERS || g_tm.tab == TM_TAB_SQUAD) return;
+    if (g_tm.tab == TM_TAB_OFFERS || g_tm.tab == TM_TAB_SQUAD) {
+        MarketUiText t;
+        ui_text_reset(&t, g_tm.line, 160);
+        int32_t value = 0, listed = 0, bids = 0;
+        for (int32_t r = 0; r < g_tm.row_count; ++r) {
+            value += g_tm.rows[r].value;
+            listed += g_tm.rows[r].listed;
+            bids += g_tm.rows[r].incoming;
+        }
+        if (g_tm.tab == TM_TAB_SQUAD) {
+            ui_text_append_i32(&t, g_tm.row_count);
+            ui_text_append_ascii(&t, " players    Squad value ");
+            tm_append_money(&t, value);
+            ui_text_append_ascii(&t, "    Listed for sale ");
+            ui_text_append_i32(&t, listed);
+        } else {
+            ui_text_append_i32(&t, bids);
+            ui_text_append_ascii(&t, bids == 1 ? " bid for your players    " : " bids for your players    ");
+            ui_text_append_i32(&t, g_tm.row_count - bids);
+            ui_text_append_ascii(&t, " of your bids running (at most 3)");
+        }
+        tm_text(g_tm.line, x + 18.0f, y + 17.0f, 13.0f, TM_CHALK2, TM_ALIGN_LEFT, w - 36.0f, 0);
+        return;
+    }
     float sort_w = 104.0f, seg_w = 5.0f * 42.0f + 4.0f;
     float search_w = w - 24.0f - seg_w - sort_w - 16.0f;
     float sx = x + 12.0f, sy = y + 8.0f;
     tm_rect(sx, sy, search_w, 36.0f, TM_GROUND);
     tm_rect(sx, sy + 35.0f, search_w, 1.0f, TM_LINE);
     tm_text(g_tm.query[0] ? g_tm.query : tm_w("Search players or clubs"), sx + 12.0f, sy + 11.0f, 13.0f,
-            g_tm.query[0] ? TM_CHALK : TM_CHALK3, TM_ALIGN_LEFT, search_w - 24.0f, 0);
+            g_tm.query[0] ? TM_CHALK : TM_CHALK3, TM_ALIGN_LEFT, search_w - (g_tm.query[0] ? 84.0f : 24.0f), 0);
     tm_hit(sx, sy, search_w, 36.0f, TM_HIT_SEARCH, 0);
+    if (g_tm.query[0]) {                       /* clear the search (registered last: wins over the field) */
+        float cx = sx + search_w - 56.0f;
+        tm_rect(cx, sy + 6.0f, 50.0f, 24.0f, TM_TURF3);
+        tm_text(tm_w("Clear"), cx + 25.0f, sy + 11.0f, 11.0f, TM_CHALK, TM_ALIGN_CENTER, 0, 1);
+        tm_hit(cx - 4.0f, sy, 58.0f, 36.0f, TM_HIT_CLEAR_SEARCH, 0);
+    }
     float gx = sx + search_w + 8.0f;
     tm_rect(gx, sy, seg_w, 36.0f, TM_GROUND);
     static const char *const labels[5] = {"All", "GK", "DEF", "MID", "FWD"};
@@ -981,11 +1123,14 @@ static void tm_draw_row(const TmRow *row, float x, float y, float w) {
         ui_text_append_i32(&t, row->trend);
         ui_text_append_char(&t, '%');
         tm_text(buf, right, y + 12.0f, 12.0f, row->trend >= 0 ? TM_SKY : TM_CHALK3, TM_ALIGN_RIGHT, 0, 0);
-        if (row->talks) tm_text(tm_w("In talks"), right, y + 32.0f, 11.0f, TM_AMBER, TM_ALIGN_RIGHT, 0, 1);
-        /* star */
-        tm_text(tm_w(row->starred ? "*" : "+"), x + w - 30.0f, y + 14.0f, 24.0f, row->starred ? TM_AMBER : TM_CHALK3,
-                TM_ALIGN_CENTER, 0, 1);
-        tm_hit(x + w - 52.0f, y, 44.0f, TM_ROW_H, TM_HIT_STAR, row->player_id);
+        const char *status = row->talks ? "In talks" : tm_block_short(row->block);
+        if (status) tm_text(tm_w(status), right, y + 32.0f, 11.0f, row->talks ? TM_AMBER : TM_CHALK3, TM_ALIGN_RIGHT, 0, 1);
+        /* shortlist toggle */
+        float sx = x + w - 54.0f;
+        tm_rect(sx, y + 17.0f, 46.0f, 24.0f, row->starred ? TM_AMBER : TM_GROUND);
+        tm_text(tm_w(row->starred ? "Saved" : "Save"), sx + 23.0f, y + 22.0f, 11.0f,
+                row->starred ? TM_AMBER_INK : TM_CHALK2, TM_ALIGN_CENTER, 0, 1);
+        tm_hit(sx - 4.0f, y, 54.0f, TM_ROW_H, TM_HIT_STAR, row->player_id);
     } else if (actions) {
         float bx = x + w - 246.0f;
         tm_button(bx, y + 11.0f, 74.0f, 36.0f, tm_w("Accept"), 0, 1, TM_HIT_INBID_ACCEPT, row->offer_id);
@@ -1008,7 +1153,7 @@ static void tm_draw_list(float x, float w) {
     if (g_tm.scroll > g_tm.scroll_max) g_tm.scroll = g_tm.scroll_max;
     if (g_tm.scroll < 0.0f) g_tm.scroll = 0.0f;
     if (!g_tm.row_count) {
-        const char *empty = g_tm.tab == TM_TAB_SHORTLIST ? "Tap + on a player to keep him here."
+        const char *empty = g_tm.tab == TM_TAB_SHORTLIST ? "Tap Save on a player to keep him here."
             : g_tm.tab == TM_TAB_OFFERS ? "No bids running. Bids for your players show up here."
             : g_tm.tab == TM_TAB_FORYOU ? "Nobody affordable improves your squad right now."
             : "No players match. Clear the search or pick another position.";
@@ -1124,9 +1269,14 @@ static void tm_draw_detail(float x) {
         return;
     }
     MarketOffer *offer = tm_user_offer_for(d->player_id);
-    int32_t window_open = g_market.window_id >= 0;
-    const char *label = !window_open ? "Window closed" : offer ? "Continue talks" : "Make offer";
-    tm_button(px, ay + 8.0f, pw - 118.0f, 44.0f, tm_w(label), 1, window_open, TM_HIT_OFFER, d->player_id);
+    int32_t talks = offer && offer->buyer_id == USER_TEAM_ID;
+    int32_t can = talks || d->block == 0;
+    if (!can) {
+        const char *why = tm_bid_error(d->block);
+        tm_text_wrap(tm_w(why ? why : "You cannot bid for him right now."), px, ay - 40.0f, 12.0f, TM_AMBER, pw, 2, 16.0f);
+    }
+    const char *label = talks ? "Continue talks" : can ? "Make offer" : "Can't bid";
+    tm_button(px, ay + 8.0f, pw - 118.0f, 44.0f, tm_w(label), 1, can, TM_HIT_OFFER, d->player_id);
     tm_button(px + pw - 110.0f, ay + 8.0f, 110.0f, 44.0f, tm_w(tm_is_starred(d->player_id) ? "Shortlisted" : "Shortlist"),
               0, 1, TM_HIT_SHORTLIST, d->player_id);
 }
@@ -1147,18 +1297,19 @@ static void tm_draw_sheet(float x, float w) {
     float deal_w = 400.0f;
     float log_w = w - deal_w;
     /* header */
-    uint16_t name[40], club[48];
+    uint16_t name[40];
     tm_player_name(g_tm.base, player->player_id, name, 40);
-    tm_team_name(g_tm.base, player->owner_id, club, 48);
     tm_badge(x + 16.0f, top + 12.0f, 44.0f, player->rating, 22.0f);
     tm_text(name, x + 72.0f, top + 14.0f, 15.0f, TM_CHALK, TM_ALIGN_LEFT, log_w - 90.0f, 1);
-    int32_t ask = user_bid_asking(player, user_index);
+    int32_t ask = g_tm.neg_ask;
     MarketUiText t;
     ui_text_reset(&t, g_tm.line, 160);
-    ui_text_append_ascii(&t, "Talks with ");
-    ui_text_append_wide(&t, club, 40);
-    ui_text_append_ascii(&t, "  asking ");
-    tm_append_money(&t, ask);
+    ui_text_append_ascii(&t, done ? "Signed from " : "Talks with ");
+    ui_text_append_wide(&t, g_tm.neg_club, 40);
+    if (!done) {
+        ui_text_append_ascii(&t, "  asking ");
+        tm_append_money(&t, ask);
+    }
     tm_text(g_tm.line, x + 72.0f, top + 36.0f, 12.0f, TM_CHALK2, TM_ALIGN_LEFT, log_w - 90.0f, 0);
     tm_rect(x, top + 68.0f, log_w, 1.0f, TM_LINE);
     /* log */
@@ -1204,6 +1355,27 @@ static void tm_draw_sheet(float x, float w) {
     float px = dx + 18.0f, pw = deal_w - 36.0f;
     float y = top + 16.0f;
     int32_t coins = user_coins(g_tm.base);
+    int32_t ended = offer && !active && !done;
+    if (done || ended) {
+        /* talks are over: the result instead of the controls */
+        tm_text(tm_w(done ? "TRANSFER COMPLETE" : "TALKS ENDED"), px, y, 10.0f, done ? TM_GOOD : TM_BAD, TM_ALIGN_LEFT, 0, 1);
+        if (done) {
+            tm_text(tm_money(offer->fee), px, y + 18.0f, 36.0f, TM_AMBER, TM_ALIGN_LEFT, 0, 1);
+            ui_text_reset(&t, g_tm.line, 160);
+            ui_text_append_i32(&t, offer->contract_years);
+            ui_text_append_ascii(&t, offer->contract_years == 1 ? " year at " : " years at ");
+            tm_append_money(&t, offer->annual_wage);
+            ui_text_append_ascii(&t, " a season");
+            tm_text(g_tm.line, px, y + 66.0f, 13.0f, TM_CHALK, TM_ALIGN_LEFT, pw, 0);
+            tm_text_wrap(tm_w("He is in your squad now. Pick him in Team Management for the next match."), px, y + 96.0f,
+                         12.0f, TM_CHALK2, pw, 3, 17.0f);
+        } else {
+            tm_text_wrap(tm_w("No deal this time. You can try again for him in the next window."), px, y + 22.0f,
+                         13.0f, TM_CHALK2, pw, 3, 18.0f);
+        }
+        tm_button(px, h - 78.0f, pw, 46.0f, tm_w("Done"), 1, 1, TM_HIT_LEAVE, 0);
+        return;
+    }
     if (wage_stage) {
         tm_text(tm_w("PERSONAL TERMS"), px, y, 10.0f, TM_CHALK3, TM_ALIGN_LEFT, 0, 1);
         tm_text(tm_money(offer->counter_wage), px, y + 18.0f, 36.0f, TM_AMBER, TM_ALIGN_LEFT, 0, 1);
@@ -1252,7 +1424,13 @@ static void tm_draw_sheet(float x, float w) {
     tm_append_money(&t, ask);
     tm_text(g_tm.line, px + pw * ask_t, track_y + 16.0f, 10.0f, TM_CHALK2, TM_ALIGN_CENTER, 0, 0);
     tm_text(tm_money(g_tm.neg_hi), px + pw, track_y + 16.0f, 10.0f, TM_CHALK3, TM_ALIGN_RIGHT, 0, 0);
-    y += 52.0f;
+    y += 46.0f;
+    /* fine steps and an exact amount */
+    float bw3 = (pw - 12.0f) / 3.0f;
+    tm_button(px, y, bw3, 34.0f, tm_w("- 5%"), 0, can_bid, TM_HIT_FEE_MINUS, 0);
+    tm_button(px + bw3 + 6.0f, y, bw3, 34.0f, tm_w("+ 5%"), 0, can_bid, TM_HIT_FEE_PLUS, 0);
+    tm_button(px + 2.0f * (bw3 + 6.0f), y, bw3, 34.0f, tm_w("Type fee"), 0, can_bid, TM_HIT_FEE_TYPE, 0);
+    y += 46.0f;
     /* contract years */
     tm_text(tm_w("CONTRACT LENGTH"), px, y, 10.0f, TM_CHALK3, TM_ALIGN_LEFT, 0, 1);
     float yb = (pw - 24.0f) / 5.0f;
@@ -1331,6 +1509,10 @@ static void tm_render(void *screen) {
     if (g_tm.width < 100.0f || g_tm.height < 100.0f) return;
     g_tm.s = g_tm.height / TM_DESIGN_H;
     g_tm.dw = g_tm.width / g_tm.s;
+    /* the screen stack re-enables the stock header and footer after Init (the tablet showed Scout Players /
+     * Sell Player and the header's menu dots over v37): hide them every frame */
+    ((TmDisplayFn)(base + 0x23B74D))(screen, 0);
+    ((TmDisplayFn)(base + 0x23B75D))(screen, 0);
     if (g_tm.base_h <= 0.0f) {
         float dims[2] = {0.0f, 0.0f};
         ((TmSetupTextFn)(base + 0x294945))(0, TM_CHALK, 1.0f, -1.0f);
@@ -1397,14 +1579,12 @@ static void tm_set_fee_from_x(float x) {
 
 static void tm_activate(uint32_t base, const TmHit *hit) {
     switch (hit->kind) {
-    case TM_HIT_BACK:
-        if (g_tm.neg_open) { g_tm.neg_open = 0; g_tm.dirty = 1; }
-        else ((CfeBackMarketFn)(base + 0x29910D))(1);
-        break;
+    case TM_HIT_BACK: tm_back(base); break;
     case TM_HIT_TAB:
         g_tm.tab = hit->value;
         g_tm.neg_open = 0;
         g_tm.scroll = 0.0f;
+        g_tm.sel_id = -1;                      /* the detail follows the tab: its first row */
         g_tm.dirty = 1;
         break;
     case TM_HIT_SEARCH: tm_open_search(base); break;
@@ -1421,6 +1601,23 @@ static void tm_activate(uint32_t base, const TmHit *hit) {
         break;
     case TM_HIT_OFFER: tm_open_sheet(base, hit->value); break;
     case TM_HIT_YEARS: g_tm.neg_years = hit->value; break;
+    case TM_HIT_FEE_MINUS:
+    case TM_HIT_FEE_PLUS: {
+        int32_t step = round5(mul_div(g_tm.neg_ask, 5, 100));
+        if (step < 5) step = 5;
+        int32_t fee = g_tm.neg_fee + (hit->kind == TM_HIT_FEE_PLUS ? step : -step);
+        if (fee < 5) fee = 5;
+        if (fee > g_tm.neg_hi) g_tm.neg_hi = round5(fee);
+        if (fee < g_tm.neg_lo) g_tm.neg_lo = round5(fee);
+        g_tm.neg_fee = fee;
+        break;
+    }
+    case TM_HIT_FEE_TYPE: tm_open_fee_keyboard(base); break;
+    case TM_HIT_CLEAR_SEARCH:
+        for (int32_t i = 0; i < 32; ++i) g_tm.query[i] = 0;
+        g_tm.scroll = 0.0f;
+        g_tm.dirty = 1;
+        break;
     case TM_HIT_SUBMIT: tm_submit(base); break;
     case TM_HIT_ACCEPT: tm_decide(base, CM_DECISION_ACCEPT, 0); break;
     case TM_HIT_WAGE_ACCEPT: tm_decide(base, CM_DECISION_ACCEPT, 0); break;
@@ -1448,8 +1645,21 @@ static void tm_activate(uint32_t base, const TmHit *hit) {
     }
 }
 
+static void tm_back(uint32_t base) {
+    if (g_tm.neg_open) { g_tm.neg_open = 0; g_tm.dirty = 1; }
+    else ((CfeBackMarketFn)(base + 0x29910D))(1);
+}
+
 static void tm_input(uint32_t base) {
     if (tm_busy(base)) { g_tm.drag_kind = TM_HIT_NONE; return; }
+    /* Android back: CFEEntityManager::ProcessPhysicalBackButton presses the header's back button
+     * (CFEHeaderMenu+0x310 = 1). The header is hidden here, so nothing else answers it. */
+    void *header = ((TsGetEntityFn)(base + 0x2609C5))();          /* CFEEntityManager::GetHeaderMenu */
+    if (header && *(volatile int32_t *)((uint8_t *)header + 0x310) == 1) {
+        *(volatile int32_t *)((uint8_t *)header + 0x310) = -1;
+        tm_back(base);
+        return;
+    }
     TmTouchFlagFn touching = (TmTouchFlagFn)(base + 0x202AE5);
     TmTouchFlagFn pressed = (TmTouchFlagFn)(base + 0x202B79);
     TmTouchFlagFn released = (TmTouchFlagFn)(base + 0x202B8D);

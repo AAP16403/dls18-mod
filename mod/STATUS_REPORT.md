@@ -301,3 +301,29 @@
   - the font scale calibration and text baseline
   - touch coordinates matching FE units (as CFEEntity::IsTouchInRect assumes)
   - how the hidden footer and header behave on the next screen
+
+## Installed 2026-09-27: v37b (Transfer Market v2 fixes from the tablet)
+- `build/DLS18_career_market_v37b_dls26_anim_v16.apk`, installed and hash verified: libCareerMarket 0935da62... (`libCareerMarket_v37b.so`), libDLS18 v36c.
+- **Fixes from the user's tablet screenshot:**
+  - **Alignment:** every label was drawn centred on its left edge; the font kept the previous screen's centred alignment. tm_text now calls FTTFont_SetAlign(0) (0x38E300) and does its own centring and right-alignment from the measured width.
+  - **Stock footer (Scout Players / Sell Player) and header (menu dots, coin sparkle) over the screen:** the screen stack re-enables them after Init, so DisplayFooter / DisplayHeader(false) now run every frame.
+  - **Back:**
+    - The top bar now has a real Back button ("Close" while negotiating).
+    - Android back is handled: CFEEntityManager::ProcessPhysicalBackButton sets CFEHeaderMenu+0x310 = 1, and with the header hidden the screen consumes that itself (sheet first, then CFE::Back).
+  - **Could not bid from the Shortlist:**
+    - One bid check now serves both the market and the screen (user_bid_block), with specific reasons: window, not for sale, signings limit, club busy, 3 bids running, in talks, won't join, club keeps him, talks ended.
+    - The user may now run 3 bids at once (was 1).
+    - Rows show a status (In talks / Won't join / Not for sale ...). The detail panel explains a disabled "Can't bid" button.
+  - **Input:**
+    - The fee has -5% / +5% steps and "Type fee" (game keyboard, digits) next to the slider.
+    - The search box has a Clear button.
+    - "Save / Saved" pills replace the + glyph.
+- **Polish:**
+  - Switching tabs selects that tab's first player.
+  - The My Squad and Offers toolbars show a summary (players, squad value, listed; bids for you, your bids of 3).
+  - Squad rows show position, value and contract.
+  - The sheet keeps the seller and ask from when talks opened, and shows a result summary (TRANSFER COMPLETE / TALKS ENDED) instead of the controls once talks are over.
+- **Tests:**
+  - run_tests violations=0 with the digests unchanged; ARM crosscheck matches.
+  - tm2_smoke ALL OK at 2880x1800 / 1024x640 / 1422x800. It now also checks left alignment on every print, the Android back path, and a bid from the Shortlist that signs.
+  - It writes PNG previews of the draw calls (`tm2_smoke.py ... <out dir>`) for layout review.

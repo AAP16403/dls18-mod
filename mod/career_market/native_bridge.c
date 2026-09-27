@@ -3454,6 +3454,45 @@ static int32_t evaluate_user_fee(uint32_t base, MarketOffer *offer, int32_t play
     return 1;
 }
 
+#define USER_ACTIVE_BIDS_MAX 3             /* v37b: bids the user can run at once (was 1) */
+
+static int32_t user_active_bids(int32_t window_id) {
+    int32_t n = 0;
+    for (int32_t i = 0; i < OFFER_CAPACITY; ++i) {
+        const MarketOffer *offer = &g_market.offers[i];
+        if (offer_is_active(offer) && offer->buyer_id == USER_TEAM_ID && offer->window_id == window_id) ++n;
+    }
+    return n;
+}
+
+/* Why the user cannot open a bid for this player now (0 = he can). One check for the market and the
+ * screen, so a disabled button always states the real reason:
+ *  -2 window closed, -5 not for sale (own / free / no value), -18 window purchase limit, -19 his club is
+ *  busy in another deal, -20 too many bids running, -21 already in talks for him, -11 he will not join,
+ *  -15 his club keeps him, -16 talks ended this window, -17 his club cannot let a player go, -8 roster. */
+static int32_t user_bid_block(uint32_t base, const MarketPlayer *player, int32_t buyer_index) {
+    int32_t window = market_window(g_market.current_turn, g_market.turns_per_season);
+    if (window < 0 || g_market.window_id != g_market.season * 2 + window) return -2;
+    if (buyer_index < 0 || player->owner_id == USER_TEAM_ID || player->owner_index < 0 ||
+        player->owner_index >= MAX_CLUBS || player->value <= 0) return -5;
+    int32_t window_id = g_market.window_id;
+    ClubAccount *buyer = &g_market.clubs[buyer_index];
+    ClubAccount *seller = &g_market.clubs[player->owner_index];
+    if (has_active_offer_for_player(player->player_id)) return -21;
+    if (window_buys(buyer, window_id) >= USER_BUY_LIMIT_PER_WINDOW) return -18;
+    if (user_active_bids(window_id) >= USER_ACTIVE_BIDS_MAX) return -20;
+    if (has_active_offer_for_seller(seller->team_id, window_id)) return -19;
+    if (talk_strikes(player->player_id) >= TALK_STRIKE_LIMIT) return -16;
+    if (!club_can_sell_now(player)) return -17;
+    if (!player_will_join(player, buyer_index)) return -11;
+    if (!starter_move_allowed(player, buyer_index)) return -15;
+    if (base) {
+        GetTeamSpecificDataFn get_specific = (GetTeamSpecificDataFn)(base + 0x20A621);
+        if (!get_specific(seller->team_id, player->player_id) || get_specific(USER_TEAM_ID, player->player_id)) return -8;
+    }
+    return 0;
+}
+
 __attribute__((visibility("default")))
 int32_t career_market_submit_user_bid(uint32_t base, int32_t player_id, int32_t fee,
                                       int32_t annual_wage, int32_t contract_years) {
@@ -3471,25 +3510,14 @@ int32_t career_market_submit_user_bid(uint32_t base, int32_t player_id, int32_t 
     int32_t player_index = find_cached_player(player_id);
     if (buyer_index < 0 || player_index < 0) return -4;
     MarketPlayer *player = &g_players[player_index];
-    if (player->owner_id == USER_TEAM_ID || player->owner_index < 0 ||
-        player->owner_index >= MAX_CLUBS || player->value <= 0) return -5;
+    int32_t block = user_bid_block(base, player, buyer_index);
+    if (block) return block;
     int32_t seller_index = player->owner_index;
     int32_t window_id = g_market.window_id;
     ClubAccount *buyer = &g_market.clubs[buyer_index];
     ClubAccount *seller = &g_market.clubs[seller_index];
-    if (window_buys(buyer, window_id) >= USER_BUY_LIMIT_PER_WINDOW ||
-
-        has_active_offer_for_buyer(USER_TEAM_ID, window_id) ||
-        has_active_offer_for_seller(seller->team_id, window_id) ||
-        has_active_offer_for_player(player_id)) return -6;
     if (fee > account_fee_room(buyer) || annual_wage > account_wage_room(buyer)) return -7;
     if (user_coins(base) - fee < clamp_add(buyer->payroll, annual_wage)) return -12;
-    if (!player_will_join(player, buyer_index)) return -11;
-    if (!starter_move_allowed(player, buyer_index)) return -15;
-    if (talk_strikes(player_id) >= TALK_STRIKE_LIMIT) return -16;
-    if (!club_can_sell_now(player)) return -17;
-    GetTeamSpecificDataFn get_specific = (GetTeamSpecificDataFn)(base + 0x20A621);
-    if (!get_specific(seller->team_id, player_id) || get_specific(USER_TEAM_ID, player_id)) return -8;
 
     MarketOffer *offer = allocate_offer(g_market.season, g_market.current_turn, window_id,
                                         player_id, seller->team_id, USER_TEAM_ID,

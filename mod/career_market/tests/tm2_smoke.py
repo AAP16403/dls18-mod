@@ -26,6 +26,29 @@ def i2f(i):
 
 stats = {"rect": 0, "print": 0, "bold": 0, "width": 0, "back": 0, "bad": []}
 scale = [1.0]
+colour = [0xFFFFFFFF]
+record = []            # draw calls of the current frame, for PNG previews
+_font_cache = {}
+
+
+def pil_font(px):
+    from PIL import ImageFont
+    px = max(6, int(round(px)))
+    if px not in _font_cache:
+        for name in ("C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arial.ttf"):
+            try:
+                _font_cache[px] = ImageFont.truetype(name, px)
+                break
+            except OSError:
+                continue
+    return _font_cache[px]
+
+
+def text_w(text, sc):
+    try:
+        return pil_font(20.0 * sc).getlength(text)
+    except Exception:
+        return len(text) * 9.0 * sc
 screen_size = [1280.0, 800.0]
 touch = {"pos": (0, 0), "down": (0, 0), "touching": 0, "pressed": 0, "released": 0}
 
@@ -51,10 +74,12 @@ def check_coords(name, *vals):
 def m_rect(x, y, w, h, c):
     stats["rect"] += 1
     check_coords("rect", x, y, w, h)
+    record.append(("r", i2f(x), i2f(y), i2f(w), i2f(h), c))
     return 0
 
 
-def m_setup(font, colour, sc, sy):
+def m_setup(font, col, sc, sy):
+    colour[0] = col
     scale[0] = i2f(sc)
     if not (0.05 < scale[0] < 10.0):
         stats["bad"].append(f"font scale {scale[0]}")
@@ -67,26 +92,48 @@ seen = set()
 def m_print(x, y, text):
     stats["print"] += 1
     check_coords("print", x, y)
-    seen.add(read_wide(text))
+    s = read_wide(text)
+    seen.add(s)
+    record.append(("t", i2f(x), i2f(y), s, colour[0], scale[0], False))
     return 0
 
 
-def m_bold(text, x, y, colour):
+def m_bold(text, x, y, col):
     stats["bold"] += 1
     check_coords("bold", x, y)
-    seen.add(read_wide(text))
+    s = read_wide(text)
+    seen.add(s)
+    record.append(("t", i2f(x), i2f(y), s, col, scale[0], True))
     return 0
 
 
 def m_width(text):
     stats["width"] += 1
-    return f2i(len(read_wide(text)) * 9.0 * scale[0])
+    return f2i(text_w(read_wide(text), scale[0]))
 
 
 def m_dims(out, text):
-    n = len(read_wide(text))
-    ac.uc.mem_write(out, struct.pack("<ff", n * 9.0 * scale[0], 20.0 * scale[0]))
+    s = read_wide(text)
+    ac.uc.mem_write(out, struct.pack("<ff", text_w(s, scale[0]), 20.0 * scale[0]))
     return 0
+
+
+def render_png(path, size):
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (int(size[0]), int(size[1])), (0, 0, 0))
+    d = ImageDraw.Draw(img)
+    argb = lambda c: ((c >> 16) & 255, (c >> 8) & 255, c & 255)
+    for op in record:
+        if op[0] == "r":
+            _, x, y, w, h, c = op
+            d.rectangle([x, y, x + w - 1, y + h - 1], fill=argb(c))
+        else:
+            _, x, y, s, c, sc, bold = op
+            f = pil_font(20.0 * sc)
+            d.text((x, y), s, fill=argb(c), font=f)
+            if bold:
+                d.text((x + 1, y), s, fill=argb(c), font=f)
+    img.save(path)
 
 
 def m_pos(out, kind):
@@ -141,7 +188,12 @@ UI_MOCKS = {
     0x2938CD: (6, m_name),
     0x20C0C9: (3, m_team),
     0x2609B5: (0, lambda: 0),                          # CFEEntityManager::GetMessageBoxQueue: none open
+    0x38E301: (1, lambda a: align.append(ac.s32(a)) or 0),   # FTTFont_SetAlign
+    0x28BA65: (8, lambda *a: check_coords("triangle", *a[:6]) or 0),
+    0x2609C5: (0, lambda: header[0]),                  # CFEEntityManager::GetHeaderMenu
 }
+align = []
+header = [0]
 for fn in (0x2B3829, 0x2B383D, 0x2B38A1, 0x2B3851, 0x2B3815, 0x2B38C9, 0x2B3865, 0x2B38B5, 0x2B3801, 0x2B37D9, 0x2B37ED):
     UI_MOCKS[fn] = (1, lambda info: 72)
 ac.MOCKS.update(UI_MOCKS)
@@ -172,6 +224,7 @@ def call(addr, *a, timeout=30_000_000):
 
 def main():
     lib, symlib, dataset = sys.argv[1], sys.argv[2], sys.argv[3]
+    shots = sys.argv[4] if len(sys.argv) > 4 else None
     syms = symbols(symlib)
     sys.argv = ["arm_crosscheck.py", lib, dataset, "1"]
     ac.main()                                          # market state after one season
@@ -187,7 +240,7 @@ def main():
         else:
             ac.uc.mem_write(ac.FAKE + off, struct.pack("<I", 0xE12FFF1E))
     ok = True
-    for size in ((1280.0, 800.0), (1024.0, 640.0), (1422.0, 800.0)):
+    for size in ((2880.0, 1800.0), (1024.0, 640.0), (1422.0, 800.0)):
         screen_size[0], screen_size[1] = size
         s = size[1] / 640.0
         dw = size[0] / s
@@ -205,8 +258,14 @@ def main():
         call(init, screen)
 
         def frame():
+            record.clear()
             call(render_post, screen)
             call(process, screen)
+
+        def snap(name):
+            if shots and size[0] == 2880.0:
+                frame()
+                render_png(f"{shots}/{name}.png", size)
 
         def tap(x, y):
             p = (int(x * s), int(y * s))
@@ -244,16 +303,44 @@ def main():
         tap(176 + 12 + search_w + 8 + 2 + 20, 56 + 8 + 18)                    # position: All
         tap(176 + 12 + search_w + 8 + (5 * 42 + 4) + 8 + 52, 56 + 26)        # sort -> lowest price
         tap(176 + 150, 56 + 52 + 6 + 29)               # first row = cheapest player
+        snap("1_scout")
+        tap(176 + main_w - 54 + 23, 56 + 52 + 6 + 29)  # Save the first row
+        tap(80, 56 + 10 + 1 * 48 + 23)                 # Shortlist tab
+        snap("4_shortlist")
+        tap(80, 56 + 10 + 4 * 48 + 23)                 # My Squad tab
+        snap("5_squad")
+        tap(80, 56 + 10 + 1 * 48 + 23)                 # back to the shortlist; bid from there
+        tap(176 + 150, 56 + 52 + 6 + 29)
         tap(dw - 320 + 16 + 60, 640 - 60 + 8 + 22)      # Make offer
+        snap("2_sheet")
         dx = 176 + (dw - 176) - 400
         px, pw = dx + 18, 400 - 36
         drag(px + pw * 0.5, 56 + 16 + 66 + 12, px + pw * 0.6, 56 + 16 + 66 + 12)   # fee slider
-        tap(px + 40, 56 + 16 + 66 + 52 + 16 + 18)       # 1 year
+        tap(px + pw * 0.5, 56 + 16 + 66 + 46 + 17)      # + 5%
+        tap(px + 40, 56 + 16 + 66 + 46 + 46 + 16 + 18)  # 1 year
         tap(px + 60, 640 - 128 + 50 + 23)               # Submit offer
+        snap("3_after_bid")
         tap(px + 60, 640 - 128 + 50 + 23)               # Submit again (counter)
         tap(px + pw - 50, 640 - 128 + 50 + 23)          # Walk away / Leave
         for _ in range(3):
             frame()
+        # Android back: with the sheet open it closes the sheet, then it leaves the screen (CFE::Back)
+        if not header[0]:
+            header[0] = ac.alloc(0x400)
+            ac.uc.mem_write(header[0], bytes(0x400))
+        tap(dw - 320 + 16 + 60, 640 - 60 + 8 + 22)      # Make offer (opens the sheet again if allowed)
+        backs = stats["back"]
+        ac.wr32(header[0] + 0x310, 1)
+        frame()
+        if ac.rds32(header[0] + 0x310) != -1:
+            stats["bad"].append("physical back not consumed")
+        ac.wr32(header[0] + 0x310, 1)
+        frame()
+        ac.wr32(header[0] + 0x310, 1)
+        frame()
+        if stats["back"] <= backs:
+            stats["bad"].append("physical back never left the screen")
+        ac.wr32(header[0] + 0x310, 0xFFFFFFFF)
         drawn = stats["rect"] - before["rect"]
         text = stats["print"] + stats["bold"] - before["print"] - before["bold"]
         print(f"screen {int(size[0])}x{int(size[1])}: {drawn} rects, {text} texts, back taps {stats['back']}")
@@ -295,6 +382,9 @@ def main():
     if any("code -5" in t for t in seen):
         ok = False
         print("a finished signing left Submit enabled")
+    if any(a != 0 for a in align) or not align:
+        ok = False
+        print("text drawn without left alignment:", set(align))
     print("ALL OK" if ok else "FAIL")
     return 0 if ok else 1
 
