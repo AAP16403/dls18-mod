@@ -191,7 +191,24 @@ UI_MOCKS = {
     0x38E301: (1, lambda a: align.append(ac.s32(a)) or 0),   # FTTFont_SetAlign
     0x28BA65: (8, lambda *a: check_coords("triangle", *a[:6]) or 0),
     0x2609C5: (0, lambda: header[0]),                  # CFEEntityManager::GetHeaderMenu
+    0x2609D5: (0, lambda: footer[0]),                  # CFEEntityManager::GetFooterMenu
+    0x25FD09: (2, lambda e, on: inputs.append((e, on)) or 0),   # CFEEntity::EnableInput
+    0x24607D: (2, lambda m, b: m_remove_button(m, b)),          # CFEFooterMenu::RemoveButton
+    0x23B5B3: (1, lambda s: s),                                  # CFEScreen::~CFEScreen (complete)
+    0x5C15C9: (1, lambda p: deleted.append(p) or 0),             # operator delete veneer
 }
+deleted = []
+footer = [0]
+inputs = []
+removed = []
+
+
+def m_remove_button(menu, bid):
+    bid = ac.s32(bid)
+    removed.append(bid)
+    off = 0x108 if bid < 32 else 0x10C
+    ac.wr32(menu + off, ac.rd32(menu + off) & ~(1 << (bid % 32)))
+    return 0
 align = []
 header = [0]
 for fn in (0x2B3829, 0x2B383D, 0x2B38A1, 0x2B3851, 0x2B3815, 0x2B38C9, 0x2B3865, 0x2B38B5, 0x2B3801, 0x2B37D9, 0x2B37ED):
@@ -239,11 +256,20 @@ def main():
             ac.uc.mem_write(ac.FAKE + (off & ~1), b"\x70\x47")
         else:
             ac.uc.mem_write(ac.FAKE + off, struct.pack("<I", 0xE12FFF1E))
+        if off >= 0x500000:                            # arm_crosscheck only watches the first 5 MB
+            from unicorn import UC_HOOK_CODE
+            ac.uc.hook_add(UC_HOOK_CODE, ac.on_code, begin=ac.FAKE + (off & ~1), end=ac.FAKE + (off & ~1) + 2)
     ok = True
     for size in ((2880.0, 1800.0), (1024.0, 640.0), (1422.0, 800.0)):
         screen_size[0], screen_size[1] = size
         s = size[1] / 640.0
         dw = size[0] / s
+        # the stock footer as the game leaves it for screen 0x19: Scout Players (0x2a) and Sell Player (9)
+        footer[0] = ac.alloc(0x400)
+        ac.uc.mem_write(footer[0], bytes(0x400))
+        ac.wr32(footer[0] + 0x108, 1 << 9)
+        ac.wr32(footer[0] + 0x10C, 1 << (0x2A - 32))
+        del removed[:]
         ctx = ac.alloc(0x40)
         ac.uc.mem_write(ctx, bytes(0x40))
         ac.wr32(ctx + 4 + 4, 0x19)                     # r[1] = screen id
@@ -341,6 +367,20 @@ def main():
         if stats["back"] <= backs:
             stats["bad"].append("physical back never left the screen")
         ac.wr32(header[0] + 0x310, 0xFFFFFFFF)
+        if sorted(set(removed)) != [9, 0x2A] or ac.rd32(footer[0] + 0x108) or ac.rd32(footer[0] + 0x10C):
+            stats["bad"].append(f"stock footer buttons not removed: {sorted(set(removed))}")
+        footer_calls = [on for e, on in inputs if e == footer[0]]
+        if not footer_calls or any(footer_calls):
+            stats["bad"].append(f"stock footer input not switched off every frame: {footer_calls[:5]}")
+        # Back deletes the screen through vtable slot 1 (CFEScreenStack::DeleteTopScreen); the stock slot is a trap
+        if ac.rd32(vt + 1 * 4) == ac.rd32(ac.FAKE + 0x71ABD0 + 4):
+            stats["bad"].append("deleting destructor still the abstract CFEScreen trap")
+        call(ac.rd32(vt + 1 * 4), screen)
+        if screen not in deleted:
+            stats["bad"].append("screen memory not freed by its deleting destructor")
+        if not inputs or inputs[-1][1] != 1:
+            stats["bad"].append("stock bars not re-enabled on exit")
+        del inputs[:]
         drawn = stats["rect"] - before["rect"]
         text = stats["print"] + stats["bold"] - before["print"] - before["bold"]
         print(f"screen {int(size[0])}x{int(size[1])}: {drawn} rects, {text} texts, back taps {stats['back']}")

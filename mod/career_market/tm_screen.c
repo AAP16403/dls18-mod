@@ -90,6 +90,8 @@ typedef struct { float x, y, w, h; int32_t kind, value; } TmHit;
 
 static void tm_reset_state(void);
 static void tm_back(uint32_t base);
+static void tm_stock_bars_input(uint32_t base, int32_t enabled);
+static void tm_keyboard_poke(uint32_t base);
 static void tm_open_fee_keyboard(uint32_t base);
 
 typedef struct {
@@ -128,6 +130,7 @@ static struct {
     /* toast */
     uint16_t toast[TM_TEXT];
     int32_t toast_frames;
+    int32_t kb_wait;            /* frames left to open the Android keyboard for a new keyboard box */
     uint16_t line[160];
 } g_tm;
 
@@ -904,6 +907,7 @@ static void tm_open_fee_keyboard(uint32_t base) {
     ui_text_reset(&t, g_ui_description, MARKET_UI_TEXT_CAPACITY);
     ui_text_append_ascii(&t, "Fee in coins");
     if (!ui_show_keyboard(base, 9, tm_cb_fee)) g_ui_keyboard_box = (void *)0;
+    else g_tm.kb_wait = 120;
 }
 
 static void tm_open_search(uint32_t base) {
@@ -914,6 +918,21 @@ static void tm_open_search(uint32_t base) {
     ui_text_reset(&t, g_ui_description, MARKET_UI_TEXT_CAPACITY);
     ui_text_append_ascii(&t, "Player or club name. Leave empty to show everyone.");
     if (!ui_show_keyboard(base, 31, tm_cb_search)) g_ui_keyboard_box = (void *)0;
+    else g_tm.kb_wait = 120;
+}
+
+/* The keyboard box only showed its text field: the Android keyboard opens when the field is tapped, and
+ * that tap did not reach it on the tablet. Open it ourselves (CFETextField::ShowKeyboard(true) 0x241664)
+ * as soon as the box and its field exist. */
+static void tm_keyboard_poke(uint32_t base) {
+    if (g_tm.kb_wait <= 0) return;
+    --g_tm.kb_wait;
+    void *box = g_ui_keyboard_box;
+    void *field = box ? *(void **)((char *)box + 0xCE4) : (void *)0;
+    if (!field) return;
+    typedef void (*TmShowKeyboardFn)(void *, int32_t);
+    ((TmShowKeyboardFn)(base + 0x241665))(field, 1);
+    g_tm.kb_wait = 0;
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -1513,6 +1532,8 @@ static void tm_render(void *screen) {
      * Sell Player and the header's menu dots over v37): hide them every frame */
     ((TmDisplayFn)(base + 0x23B74D))(screen, 0);
     ((TmDisplayFn)(base + 0x23B75D))(screen, 0);
+    tm_stock_bars_input(base, 0);
+    tm_keyboard_poke(base);
     if (g_tm.base_h <= 0.0f) {
         float dims[2] = {0.0f, 0.0f};
         ((TmSetupTextFn)(base + 0x294945))(0, TM_CHALK, 1.0f, -1.0f);
@@ -1708,6 +1729,30 @@ static void tm_input(uint32_t base) {
  * ------------------------------------------------------------------------------------------------------------- */
 static uint32_t g_tm_vtable[MARKET_SCREEN_VTABLE_ENTRIES];
 
+/* Hidden is not inert: DisplayFooter/DisplayHeader(false) only stop drawing, and the stock Scout Players /
+ * Sell Player buttons (and the header's) kept taking the taps at the edges of the screen. CFEEntity::EnableInput
+ * 0x25FD08 sets the input flag (+5) on the entity and all its children. */
+static void tm_stock_bars_input(uint32_t base, int32_t enabled) {
+    TsEnableInputFn enable_input = (TsEnableInputFn)(base + 0x25FD09);
+    void *footer = ((TsGetEntityFn)(base + 0x2609D5))();          /* CFEEntityManager::GetFooterMenu */
+    void *header = ((TsGetEntityFn)(base + 0x2609C5))();          /* CFEEntityManager::GetHeaderMenu */
+    if (footer) enable_input(footer, enabled);
+    if (header) enable_input(header, enabled);
+    if (!enabled && footer) {
+        /* The footer still drew Scout Players / Sell Player on top of the screen (its visible flag +0x318 does
+         * not cover the buttons). CFEFooterMenu::SetButtons(screen id) builds them from the 64-bit mask at
+         * +0x108/+0x10c; remove every one with CFEFooterMenu::RemoveButton 0x24607C. The next screen's
+         * CFEEntityManager::SetupHeaderAndFooter rebuilds its own footer. */
+        typedef void (*TmRemoveButtonFn)(void *, int32_t);
+        TmRemoveButtonFn remove_button = (TmRemoveButtonFn)(base + 0x24607D);
+        volatile uint32_t *mask = (volatile uint32_t *)((uint8_t *)footer + 0x108);
+        for (int32_t id = 0; id < 0x2D && (mask[0] | mask[1]); ++id) {
+            uint32_t bit = id < 32 ? mask[0] & (1u << id) : mask[1] & (1u << (id - 32));
+            if (bit) remove_button(footer, id);
+        }
+    }
+}
+
 static void tm_screen_init(void *screen) {
     uint32_t base = g_tm.base;
     g_tm.screen = screen;
@@ -1723,6 +1768,7 @@ static void tm_screen_init(void *screen) {
 static void tm_screen_exit(void *screen) {
     uint32_t base = g_tm.base;
     if (screen == g_tm.screen) {
+        tm_stock_bars_input(base, 1);
         ((TmDisplayFn)(base + 0x23B74D))(screen, 1);
         ((TmDisplayFn)(base + 0x23B75D))(screen, 1);
         g_tm.screen = (void *)0;
@@ -1732,8 +1778,22 @@ static void tm_screen_exit(void *screen) {
 
 static int32_t tm_screen_process(void *screen) {
     if (!screen || screen != g_tm.screen || !g_tm.base) return 0;
+    tm_stock_bars_input(g_tm.base, 0);
+    tm_keyboard_poke(g_tm.base);
     tm_input(g_tm.base);
     return 0;
+}
+
+/* Vtable slot 1, the deleting destructor. CFEScreen is abstract: its own slot 1 is a trap instruction
+ * (0x23B5B6), so Back (CFEScreenStack::DeleteTopScreen) crashed with SIGILL. Run the complete destructor
+ * CFEScreen::~CFEScreen 0x23B5B2, then free the object through the game's operator delete (the veneer
+ * 0x5C15C8 the stock deleting destructors tail-call; the screen came from the game's operator new). */
+typedef void (*TmObjFn)(void *);
+static void tm_screen_delete(void *screen) {
+    uint32_t base = g_tm.base;
+    tm_screen_exit(screen);
+    ((TmObjFn)(base + 0x23B5B3))(screen);
+    ((TmObjFn)(base + 0x5C15C9))(screen);
 }
 
 static void tm_screen_render(void *screen) { (void)screen; }
@@ -1751,6 +1811,7 @@ static void *tm_build_screen(uint32_t base) {
     constructor(screen);
     const uint32_t *source_vtable = (const uint32_t *)(base + 0x71ABD0);
     for (int32_t i = 0; i < MARKET_SCREEN_VTABLE_ENTRIES; ++i) g_tm_vtable[i] = source_vtable[i];
+    g_tm_vtable[1] = (uint32_t)(uintptr_t)tm_screen_delete | 1u;
     g_tm_vtable[3] = (uint32_t)(uintptr_t)tm_screen_init | 1u;
     g_tm_vtable[4] = (uint32_t)(uintptr_t)tm_screen_exit | 1u;
     g_tm_vtable[5] = (uint32_t)(uintptr_t)tm_screen_process | 1u;

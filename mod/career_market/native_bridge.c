@@ -7501,6 +7501,15 @@ static void market_ui_open_screen(uint32_t base) {
 
 static void *tm_build_screen(uint32_t base);
 
+/* CFEScreen's deleting destructor (vtable slot 1) is a trap: the class is abstract. A cloned vtable needs its
+ * own, or leaving the screen (CFEScreenStack::DeleteTopScreen) dies with SIGILL at 0x23B5B6. */
+static void market_screen_delete(void *screen) {
+    uint32_t base = g_ui_base;
+    market_ui_screen_exit(screen);
+    ((void (*)(void *))(uintptr_t)(base + 0x23B5B3))(screen);      /* CFEScreen::~CFEScreen */
+    ((void (*)(void *))(uintptr_t)(base + 0x5C15C9))(screen);      /* operator delete (veneer) */
+}
+
 static uint32_t career_market_new_screen_hook(ModCtx *ctx, uint32_t base) {
 #if MARKET_TM2
     if (ctx && base && ctx->r[1] == 0x19) {       /* v37: Transfer Market v2 replaces CFESDreamLeagueTransfers */
@@ -7522,6 +7531,7 @@ static uint32_t career_market_new_screen_hook(ModCtx *ctx, uint32_t base) {
     for (int32_t i = 0; i < MARKET_SCREEN_VTABLE_ENTRIES; ++i) {
         g_ui_screen_vtable[i] = source_vtable[i];
     }
+    g_ui_screen_vtable[1] = (uint32_t)(uintptr_t)market_screen_delete | 1u;
     g_ui_screen_vtable[3] = (uint32_t)(uintptr_t)market_ui_screen_init | 1u;
     g_ui_screen_vtable[4] = (uint32_t)(uintptr_t)market_ui_screen_exit | 1u;
     g_ui_screen_vtable[5] = (uint32_t)(uintptr_t)market_ui_screen_process | 1u;
