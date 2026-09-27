@@ -63,7 +63,10 @@ enum {
     /* Club Hub (hub_screen.c) */
     HUB_HIT_FIRST, HUB_HIT_BACK = HUB_HIT_FIRST, HUB_HIT_TAB, HUB_HIT_SEASON, HUB_HIT_LIST, HUB_HIT_ROW,
     HUB_HIT_SLIDER, HUB_HIT_MINUS, HUB_HIT_PLUS, HUB_HIT_TYPE, HUB_HIT_YEARS, HUB_HIT_RENEW, HUB_HIT_ACCEPT,
-    HUB_HIT_LISTTOGGLE, HUB_HIT_KEEP
+    HUB_HIT_LISTTOGGLE, HUB_HIT_KEEP,
+    /* Team Management v2 (teamman_screen.c) */
+    TMG_HIT_FIRST, TMG_HIT_TAB = TMG_HIT_FIRST, TMG_HIT_FORMATION, TMG_HIT_PLAYER, TMG_HIT_SWAP, TMG_HIT_CLASSIC,
+    TMG_HIT_LIST
 };
 enum { TM_LOG_CLUB, TM_LOG_YOU, TM_LOG_RIVAL, TM_LOG_GOOD, TM_LOG_BAD };
 
@@ -110,7 +113,7 @@ typedef struct {
 static struct {
     void *screen;
     uint32_t base;
-    int32_t view;               /* 0 the market, 1 the Club Hub */
+    int32_t view;               /* 0 the market, 1 the Club Hub, 2 Team Management (screen id 4) */
     float s, dw, height, width;
     float base_h;               /* font height at scale 1 */
     int32_t tab, pos_filter, sort;
@@ -951,6 +954,7 @@ static void tm_keyboard_poke(uint32_t base) {
 }
 
 #include "hub_screen.c"
+#include "teamman_screen.c"
 
 /* ---------------------------------------------------------------------------------------------------------------
  * render
@@ -1558,7 +1562,24 @@ static void tm_draw_toast(float main_x, float main_w) {
     tm_text(g_tm.toast, main_x + 26.0f, ty + 12.0f, 13.0f, TM_GROUND, TM_ALIGN_LEFT, tw - 28.0f, 1);
 }
 
+static const uint32_t *g_tm_vtable_ref(void);
+#define TM_SCREEN_ALLOC 0x100
+#define TM_SCREEN_VIEW_OFF 0xF8          /* our view, past the 0xF4 bytes of CFEScreen */
+
+static void tm_adopt(void *screen) {
+    if (!screen || screen == g_tm.screen) return;
+    if (*(uint32_t *)screen != (uint32_t)(uintptr_t)g_tm_vtable_ref()) return;
+    g_tm.screen = screen;
+    g_tm.view = *(int32_t *)((uint8_t *)screen + TM_SCREEN_VIEW_OFF);
+    g_tm.neg_open = 0;
+    g_tm.dirty = 1;
+    g_tmg.dirty = 1;
+    g_hub.dirty = 1;
+    g_tm.hit_count = 0;
+}
+
 static void tm_render(void *screen) {
+    tm_adopt(screen);
     if (!screen || screen != g_tm.screen) return;
     uint32_t base = g_tm.base;
     CfeGetSizeMarketFn get_width = (CfeGetSizeMarketFn)(base + 0x25EFED);
@@ -1579,6 +1600,12 @@ static void tm_render(void *screen) {
         ((TmSetupTextFn)(base + 0x294945))(0, TM_CHALK, 1.0f, -1.0f);
         ((TmTextDimsFn)(base + 0x38F2A1))(dims, tm_w("Ag"));
         g_tm.base_h = dims[1] > 1.0f ? dims[1] : 20.0f;
+    }
+    if (g_tm.view == 2) {
+        g_tm.hit_count = 0;
+        tmg_render(base);
+        tm_draw_toast(TM_RAIL_W, g_tm.dw - TM_RAIL_W - TM_DETAIL_W);
+        return;
     }
     if (g_tm.view == 1) {
         g_tm.hit_count = 0;
@@ -1704,13 +1731,15 @@ static void tm_activate(uint32_t base, const TmHit *hit) {
         break;
     }
     default:
-        if (hit->kind >= HUB_HIT_FIRST) hub_activate(base, hit);
+        if (hit->kind >= TMG_HIT_FIRST) tmg_activate(base, hit);
+        else if (hit->kind >= HUB_HIT_FIRST) hub_activate(base, hit);
         break;
     }
 }
 
 static void tm_back(uint32_t base) {
-    if (g_tm.view == 1) hub_back(base);
+    if (g_tm.view == 2) { tmg_leave(base); ((CfeBackMarketFn)(base + 0x29910D))(1); }
+    else if (g_tm.view == 1) hub_back(base);
     else if (g_tm.neg_open) { g_tm.neg_open = 0; g_tm.dirty = 1; }
     else ((CfeBackMarketFn)(base + 0x29910D))(1);
 }
@@ -1742,16 +1771,18 @@ static void tm_input(uint32_t base) {
                                   || hit->kind == TM_HIT_INBID_REJECT
                                   || (hit->kind == TM_HIT_LISTTOGGLE && g_tm.view == 0)
                                   || hit->kind == HUB_HIT_ROW || hit->kind == HUB_HIT_LIST
+                                  || hit->kind == TMG_HIT_LIST || (hit->kind == TMG_HIT_PLAYER && g_tmg.view == TMG_SQUAD)
                                   ? TM_HIT_LIST : hit->kind) : TM_HIT_NONE;
         g_tm.drag_moved = 0;
-        g_tm.drag_scroll0 = g_tm.view == 1 ? g_hub.scroll : g_tm.scroll;
+        g_tm.drag_scroll0 = g_tm.view == 2 ? g_tmg.scroll : g_tm.view == 1 ? g_hub.scroll : g_tm.scroll;
     }
     if (touching(1)) {
         if (g_tm.drag_kind == TM_HIT_LIST && (g_tm.view == 1 || !g_tm.neg_open)) {
             float delta = py - dy;
             if (delta > 10.0f || delta < -10.0f) g_tm.drag_moved = 1;
             if (g_tm.drag_moved) {
-                if (g_tm.view == 1) g_hub.scroll = g_tm.drag_scroll0 - delta;
+                if (g_tm.view == 2) g_tmg.scroll = g_tm.drag_scroll0 - delta;
+                else if (g_tm.view == 1) g_hub.scroll = g_tm.drag_scroll0 - delta;
                 else g_tm.scroll = g_tm.drag_scroll0 - delta;
             }
         } else if (g_tm.drag_kind == TM_HIT_SLIDER) {
@@ -1779,6 +1810,7 @@ static void tm_input(uint32_t base) {
  * screen
  * ------------------------------------------------------------------------------------------------------------- */
 static uint32_t g_tm_vtable[MARKET_SCREEN_VTABLE_ENTRIES];
+static const uint32_t *g_tm_vtable_ref(void) { return g_tm_vtable; }
 
 /* Hidden is not inert: DisplayFooter/DisplayHeader(false) only stop drawing, and the stock Scout Players /
  * Sell Player buttons (and the header's) kept taking the taps at the edges of the screen. CFEEntity::EnableInput
@@ -1811,7 +1843,9 @@ static void tm_screen_init(void *screen) {
     ((TmDisplayFn)(base + 0x23B75D))(screen, 0);   /* CFEScreen::DisplayHeader(false) */
     tm_refresh(base);
     g_tm.neg_open = 0;
-    g_tm.view = 0;
+    g_tm.view = *(int32_t *)((uint8_t *)screen + TM_SCREEN_VIEW_OFF);
+    if (g_tm.view == 2) tmg_open(base);
+    else g_tm.view = 0;
     g_tm.drag_kind = TM_HIT_NONE;
     g_tm.hit_count = 0;
     if (g_tm.pos_filter < -1 || g_tm.pos_filter > 3) g_tm.pos_filter = -1;
@@ -1820,6 +1854,7 @@ static void tm_screen_init(void *screen) {
 static void tm_screen_exit(void *screen) {
     uint32_t base = g_tm.base;
     if (screen == g_tm.screen) {
+        if (g_tm.view == 2) tmg_leave(base);
         tm_stock_bars_input(base, 1);
         ((TmDisplayFn)(base + 0x23B74D))(screen, 1);
         ((TmDisplayFn)(base + 0x23B75D))(screen, 1);
@@ -1829,6 +1864,7 @@ static void tm_screen_exit(void *screen) {
 }
 
 static int32_t tm_screen_process(void *screen) {
+    tm_adopt(screen);
     if (!screen || screen != g_tm.screen || !g_tm.base) return 0;
     tm_stock_bars_input(g_tm.base, 0);
     tm_keyboard_poke(g_tm.base);
@@ -1854,13 +1890,14 @@ static void tm_screen_render_post(void *screen) { tm_render(screen); }
 static int32_t tm_screen_is_fullscreen(void *screen) { (void)screen; return 1; }
 
 /* Called from career_market_new_screen_hook for id 0x19. Returns the new screen or 0 (stock screen). */
-static void *tm_build_screen(uint32_t base) {
+static void *tm_build_screen_as(uint32_t base, int32_t id, int32_t view) {
     GameNewFn game_new = (GameNewFn)(base + 0x1C06AC);
     CfeScreenCtorMarketFn constructor = (CfeScreenCtorMarketFn)(base + 0x23B52D);
     CfeScreenSetIdMarketFn set_id = (CfeScreenSetIdMarketFn)(base + 0x23B5AD);
-    void *screen = game_new(0xF4, 0, 0);
+    void *screen = game_new(TM_SCREEN_ALLOC, 0, 0);
     if (!screen) return (void *)0;
     constructor(screen);
+    *(int32_t *)((uint8_t *)screen + TM_SCREEN_VIEW_OFF) = view;
     const uint32_t *source_vtable = (const uint32_t *)(base + 0x71ABD0);
     for (int32_t i = 0; i < MARKET_SCREEN_VTABLE_ENTRIES; ++i) g_tm_vtable[i] = source_vtable[i];
     g_tm_vtable[1] = (uint32_t)(uintptr_t)tm_screen_delete | 1u;
@@ -1872,7 +1909,7 @@ static void *tm_build_screen(uint32_t base) {
     g_tm_vtable[36] = (uint32_t)(uintptr_t)tm_screen_render_post | 1u;
     g_tm_vtable[44] = (uint32_t)(uintptr_t)tm_screen_is_fullscreen | 1u;
     *(uint32_t *)screen = (uint32_t)(uintptr_t)g_tm_vtable;
-    set_id(screen, TM_SCREEN_ID);
+    set_id(screen, id);
     g_tm.base = base;
     g_ui_base = base;
     g_tm.screen = screen;
@@ -1881,6 +1918,21 @@ static void *tm_build_screen(uint32_t base) {
     if (!initialised) { tm_reset_state(); initialised = 1; }
     if (g_tm.tab < 0 || g_tm.tab >= TM_TAB_COUNT) g_tm.tab = TM_TAB_SCOUT;
     return screen;
+}
+
+static void *tm_build_screen(uint32_t base) { return tm_build_screen_as(base, TM_SCREEN_ID, 0); }
+
+/* Team Management v2 for NewScreen(4): menus only (never in a match or an online match); Classic lets the stock
+ * screen through once. Returns 0 to build the stock screen. */
+typedef int32_t (*TmgInGameFn)(void);
+static void *tmg_build_screen(uint32_t base) {
+    if (g_tmg_stock_once) { g_tmg_stock_once = 0; return (void *)0; }
+    if (((TmgInGameFn)(base + 0x203835))()) return (void *)0;                       /* CCore::InGame */
+    if (*(int32_t *)((uint8_t *)(uintptr_t)(base + MATCH_SETUP_INFO) + 0xFB0) != -1) return (void *)0;
+    if (!state_is_valid()) return (void *)0;
+    uint8_t *cteam = tmg_cteam(base);
+    if (!cteam) return (void *)0;                                                    /* no career team */
+    return tm_build_screen_as(base, TMG_SCREEN_ID, 2);
 }
 
 static void tm_reset_state(void) {

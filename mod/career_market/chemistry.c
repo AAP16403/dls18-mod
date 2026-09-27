@@ -18,7 +18,7 @@
  *   tenure 25%       1 - e^(-matches/6), as a table
  *   involvement 25%  appearance share, topped up by good form: share + (1 - share) * perf * 0.6
  *   performance 25%  form over 5.5..8.5 (form drifts towards 5.5 while he does not play)
- *   position fit 15% (1000 until the Team Management screen supplies the slot)
+ *   position fit 15% the XI slot against his own position (chem_update_fit)
  *   familiarity 10%  matches in the current formation
  *   boost            1% + 14% * smoothstep(chemistry), in tenths of a percent (10..150)
  */
@@ -188,6 +188,8 @@ static int32_t chem_boost_x10(int32_t chemistry) {
     return 10 + 140 * s / 1000;
 }
 
+static int32_t chem_team_form_x10(void) { return g_ext3.last_team_rating_x10; }
+
 static int32_t chem_form_x10(int32_t player_id) {
     ChemPlayer *c = chem_find(player_id);
     return c ? (c->form_x100 + 5) / 10 : 0;
@@ -256,6 +258,66 @@ static void chem_prepare(uint32_t base) {
     if (empty && g_ext3.matches == 0) chem_seed(base);
 }
 
+/*
+ * Position fit for the starting XI. Career CTeamManagement = CSeason+0x6E0 (CSeason::GetTeamManagement); its
+ * lineup ids at +0x140+2 (u16 x 32, index 0..10 = the formation slots, CTeamLineup::GetID), the CTeam at +0x194;
+ * the menu formation at CTeam+0x12F (0..11, what CTeamLineup::SelectStartingEleven reads). Slot position =
+ * FS_iFormationPlayerPos[formation][slot] 0x63A55C (int32 x 11 per formation, EPlayerPosition). The player's
+ * own position = his club link entry (CDataBase::GetTeamLink(team) 0x20934C): count at +4, u32 ids at +0x88,
+ * int8 position at +8+4i+1. CTeamLineup::PlayerPositionSuitability 0x2F0A2C gives the distance: 0 natural,
+ * 1..10 further out of position, 50 a keeper outfield or the reverse; fit follows a smooth curve over it.
+ * A player the 32-entry link table does not hold (squad-64 overflow) is scored by position group instead.
+ */
+typedef const uint8_t *(*ChemTeamLinkFn)(int32_t);
+typedef int32_t (*ChemSuitabilityFn)(void *, int32_t, int32_t);
+
+static int32_t chem_fit_from_distance(int32_t d) {
+    static const int32_t xs[7] = {0, 1, 2, 3, 5, 10, 50}, ys[7] = {1000, 900, 800, 700, 520, 250, 0};
+    return lerp_pts(d < 0 ? 0 : d, xs, ys, 7);
+}
+
+/* FS_iFormationFEPlayerPos groups: 0 GK, 1-3 defence, 4-8 midfield, 9-10 attack */
+static int32_t chem_fit_by_group(int32_t player_group, int32_t fe_pos) {
+    int32_t slot_group = fe_pos <= 0 ? 0 : fe_pos <= 3 ? 1 : fe_pos <= 8 ? 2 : 3;
+    if ((player_group == 0) != (slot_group == 0)) return 0;
+    int32_t gap = player_group > slot_group ? player_group - slot_group : slot_group - player_group;
+    return gap == 0 ? 850 : gap == 1 ? 450 : 150;
+}
+
+static void chem_update_fit(uint32_t base) {
+    if (!base) return;
+    const uint8_t *tm = (const uint8_t *)(uintptr_t)(base + PROFILE_INSTANCE + 0x14 + 0x6E0);
+    const uint8_t *cteam = *(const uint8_t *const *)(tm + 0x194);
+    if (!cteam) return;
+    int32_t formation = cteam[0x12F];
+    if (formation < 0 || formation > 11) return;
+    const int32_t *slot_pos = (const int32_t *)(uintptr_t)(base + 0x63A55C) + formation * 11;
+    const int32_t *slot_fe = (const int32_t *)(uintptr_t)(base + 0x63A76C) + formation * 11;
+    const uint8_t *link = ((ChemTeamLinkFn)(base + 0x20934D))(USER_TEAM_ID);
+    int32_t link_count = link ? *(const int32_t *)(link + LINK_PLAYER_COUNT) : 0;
+    if (link_count < 0 || link_count > 32) link_count = 0;
+    ChemSuitabilityFn suitability = (ChemSuitabilityFn)(base + 0x2F0A2D);
+    for (int32_t slot = 0; slot < 11; ++slot) {
+        int32_t id = *(const uint16_t *)(tm + 0x140 + 2 + slot * 2);
+        ChemPlayer *c = chem_find(id);
+        if (!c) continue;
+        int32_t fit = -1;
+        for (int32_t i = 0; i < link_count; ++i) {
+            if (*(const int32_t *)(link + LINK_PLAYER_IDS + 4 * i) != id) continue;
+            int32_t own = (int8_t)link[LINK_TEAM_DATA + 4 * i + 1];
+            int32_t want = slot_pos[slot];
+            if (own >= 0 && own <= 0x16 && want >= 0 && want <= 0x16) fit = chem_fit_from_distance(suitability((void *)0, own, want));
+            break;
+        }
+        if (fit < 0) {
+            int32_t index = find_cached_player(id);
+            if (index >= 0 && g_players[index].position >= 0 && g_players[index].position <= 3)
+                fit = chem_fit_by_group(g_players[index].position, slot_fe[slot]);
+        }
+        if (fit >= 0 && fit != c->fit_pm) { c->fit_pm = fit; g_market_dirty = 1; }
+    }
+}
+
 typedef int32_t (*ChemRatingFn)(int32_t, int32_t);
 
 /* Device side: read the finished match from the game and record it. team = STAT team index of the user. */
@@ -281,5 +343,43 @@ static void chem_on_match(uint32_t base, int32_t team, int32_t side) {
             if (formation > 11) formation = -1;
         }
     }
+    chem_update_fit(base);
     chem_record(ids, overall, count, formation);
+}
+
+/*
+ * Match boost. CPlayer::SetupPlayer(team, index, TPlayerInfo*) 0x2DAC02 copies a player's stats into the match
+ * object as bytes 0..99; the hook "chem_setup_player" sits on its last instruction before the tail call
+ * (0x2DAD34 mov.w r1,#0x800, after every stat byte is stored; r0 = the CPlayer). SetupPlayer rewrites the bytes
+ * from the career data every time it runs, so the boost never stacks, also on a resumed match.
+ *   CPlayer+0x70 u16 player id;  +0x127 ball control, +0x129 passing, +0x128 crossing, +0x123 tackling,
+ *   +0x12B shot stopping, +0x12C handling (GK)
+ * Physical stats and the energy-scaled speed and acceleration (+0x125/+0x126) are left alone. Only players of the
+ * user squad, and never in an online (DLO) match: CMatchSetup::ms_tInfo+0xFB0 != -1.
+ */
+static const uint16_t k_chem_boost_offsets[6] = {0x127, 0x129, 0x128, 0x123, 0x12B, 0x12C};
+
+static int32_t chem_boost_player(uint8_t *cplayer, int32_t player_id) {
+    if (!chem_find(player_id)) return 0;
+    int32_t index = find_cached_player(player_id);
+    if (index < 0 || g_players[index].owner_id != USER_TEAM_ID) return 0;
+    ChemParts parts;
+    if (!chem_parts(player_id, &parts)) return 0;
+    int32_t boost = chem_boost_x10(parts.chemistry);             /* tenths of a percent */
+    for (int32_t k = 0; k < 6; ++k) {
+        int32_t v = cplayer[k_chem_boost_offsets[k]];
+        if (v <= 0 || v > 99) continue;
+        int32_t boosted = (v * (1000 + boost) + 500) / 1000;
+        cplayer[k_chem_boost_offsets[k]] = (uint8_t)(boosted > 99 ? 99 : boosted);
+    }
+    return boost;
+}
+
+static uint32_t chem_setup_player_hook(ModCtx *ctx, uint32_t base) {
+    if (!base || !state_is_valid()) return 0;
+    if (*(int32_t *)((uint8_t *)(uintptr_t)(base + MATCH_SETUP_INFO) + 0xFB0) != -1) return 0;   /* online */
+    uint8_t *cplayer = (uint8_t *)(uintptr_t)ctx->r[0];
+    if (!cplayer) return 0;
+    chem_boost_player(cplayer, *(const uint16_t *)(cplayer + 0x70));
+    return 0;                                   /* run mov.w r1,#0x800 and the stock tail call */
 }

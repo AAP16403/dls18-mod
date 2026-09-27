@@ -333,6 +333,7 @@ int32_t modcore_register(const char *name, ModHookFn fn);
 int32_t modcore_init(uint32_t base);
 uint32_t modcore_resume(const char *name);
 static uint32_t career_market_new_screen_hook(ModCtx *ctx, uint32_t base);
+static uint32_t chem_setup_player_hook(ModCtx *ctx, uint32_t base);
 static void ts_register_hooks(void);
 static void ts_on_enter(uint32_t base);
 static void ts_buy_dialog(uint32_t base);
@@ -342,6 +343,8 @@ static uint8_t g_modcore_booted;
 static void mod_boot(uint32_t base, int32_t force) {
     if (!base || (g_modcore_booted && !force)) return;
     modcore_register("career_market_new_screen", career_market_new_screen_hook);
+    modcore_register("chem_setup_player", chem_setup_player_hook);
+    modcore_register("chem_setup_goally", chem_setup_player_hook);
     ts_register_hooks();
     modcore_init(base);
     g_modcore_booted = 1;
@@ -7624,6 +7627,7 @@ static void market_ui_open_screen(uint32_t base) {
 }
 
 static void *tm_build_screen(uint32_t base);
+static void *tmg_build_screen(uint32_t base);
 
 /* CFEScreen's deleting destructor (vtable slot 1) is a trap: the class is abstract. A cloned vtable needs its
  * own, or leaving the screen (CFEScreenStack::DeleteTopScreen) dies with SIGILL at 0x23B5B6. */
@@ -7639,6 +7643,13 @@ static uint32_t career_market_new_screen_hook(ModCtx *ctx, uint32_t base) {
     if (ctx && base && ctx->r[1] == 0x19) {       /* v37: Transfer Market v2 replaces CFESDreamLeagueTransfers */
         mod_boot(base, 0);
         void *screen = tm_build_screen(base);
+        if (!screen) return 0;
+        ctx->r[0] = (uint32_t)(uintptr_t)screen;
+        return ctx->lr;
+    }
+    if (ctx && base && ctx->r[1] == 4) {          /* v40: Team Management v2 replaces CFESTeamManagement in menus */
+        mod_boot(base, 0);
+        void *screen = tmg_build_screen(base);
         if (!screen) return 0;
         ctx->r[0] = (uint32_t)(uintptr_t)screen;
         return ctx->lr;

@@ -295,6 +295,9 @@ RUNTIME_HOOKS = [
     {"name": "ts_bid", "site": 0x276FB8, "length": 4},           # CFESDreamLeagueTransfers::CurrentPlayerBid
     {"name": "ts_card_value", "site": 0x2343AC, "length": 4},    # CFEPlayerCard::GetPlayerValue
     {"name": "ts_footer_post", "site": 0x246656, "length": 4},   # CFEFooterMenu::RenderPost
+    # v40 chemistry boost: CPlayer::SetupPlayer after the last stat byte, on `mov.w r1, #0x800` (r0 = CPlayer)
+    {"name": "chem_setup_player", "site": 0x2DAD34, "length": 4},
+    {"name": "chem_setup_goally", "site": 0x2DABF6, "length": 4},    # CPlayer::SetupGoally, same point
 ]
 SAVE_VERSION_BOOT = 0x376B72
 DL_OPEN_PLT = 0x1D90FC

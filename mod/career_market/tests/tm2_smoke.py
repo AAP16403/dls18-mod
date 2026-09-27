@@ -215,6 +215,31 @@ def m_league_pos(league, team):
 UI_MOCKS[0x36CC41] = (1, lambda season: 4)      # CSeason::GetUserLeagueInTree: Division 3
 UI_MOCKS[0x36202F] = (2, m_league_pos)          # CTournament::GetTeamLeaguePos
 UI_MOCKS[0x241FB5] = (1, lambda field: 0)       # CFETextField::GetText (keyboard never confirmed here)
+tmg = {"swaps": [], "saves": 0, "forwards": [], "tm": 0, "link": 0}
+
+
+def m_tmg_swap(tm, a, b, force, x=0, y=0):
+    a, b = ac.s32(a), ac.s32(b)
+    tmg["swaps"].append((a, b))
+    ids = [ac.rd32(tm + 0x142 + 2 * i) & 0xFFFF for i in range(32)]
+    if a in ids and b in ids:
+        ia, ib = ids.index(a), ids.index(b)
+        ac.uc.mem_write(tm + 0x142 + 2 * ia, struct.pack("<H", b))
+        ac.uc.mem_write(tm + 0x142 + 2 * ib, struct.pack("<H", a))
+    return 0
+
+
+def m_tmg_save(tm, really):
+    tmg["saves"] += 1 if really else 0
+    return 0
+
+
+UI_MOCKS[0x203835] = (0, lambda: 0)                                  # CCore::InGame: menus
+UI_MOCKS[0x2F27D9] = (4, m_tmg_swap)                                 # CTeamManagement::SwapPlayersByID
+UI_MOCKS[0x2F2C85] = (2, m_tmg_save)                                 # CTeamManagement::Save
+UI_MOCKS[0x20934D] = (1, lambda team: tmg["link"])                   # CDataBase::GetTeamLink
+UI_MOCKS[0x2F0A2D] = (3, lambda self, a, b: abs(ac.s32(a) - ac.s32(b)))   # PlayerPositionSuitability
+UI_MOCKS[0x2984CD] = (6, lambda *a: tmg["forwards"].append(ac.s32(a[0])) or 0)   # CFE::Forward
 deleted = []
 footer = [0]
 inputs = []
@@ -469,6 +494,147 @@ def main():
         print(f"screen {int(size[0])}x{int(size[1])}: {drawn} rects, {text} texts, back taps {stats['back']}")
         if drawn < 100 or text < 50:
             ok = False
+    # ---- Team Management v2 (screen 4) ----
+    import os
+    real = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "unpacked", "apk", "lib",
+                             "armeabi-v7a", "libDLS18.so"), "rb").read()
+    def rodata(va, n):
+        # the tables sit in the first load segment, file offset == virtual address there
+        return real[va:va + n]
+    ac.uc.mem_write(ac.FAKE + 0x63A55C, rodata(0x63A55C, 12 * 44))
+    ac.uc.mem_write(ac.FAKE + 0x63A76C, rodata(0x63A76C, 12 * 44))
+    ac.wr32(ac.FAKE + 0x7C2AAC + 0xFB0, 0xFFFFFFFF)                   # not an online match
+    view = ac.alloc(32)
+    count = ac.s32(call(ac.LIB + syms["career_market_get_player_count"]))
+    user_ids = []
+    for i in range(count):
+        if call(ac.LIB + syms["career_market_get_player"], i, view) and ac.rds32(view + 4) == USER_TEAM_ID:
+            user_ids.append(ac.rds32(view))
+    tm = ac.FAKE + 0x84A260 + 0x14 + 0x6E0
+    ac.uc.mem_write(tm, bytes(0x200))
+    cteam = ac.alloc(0x1100)
+    ac.uc.mem_write(cteam, bytes(0x1100))
+    ac.uc.mem_write(tm + 0x140, bytes([min(18, len(user_ids))]))
+    for i, pid in enumerate(user_ids[:18]):
+        ac.uc.mem_write(tm + 0x142 + 2 * i, struct.pack("<H", pid))
+    ac.wr32(tm + 0x194, cteam)
+    ac.wr32(cteam + 0x1014, tm)
+    ac.uc.mem_write(cteam + 0x12F, bytes([6]))
+    link = ac.alloc(0x108)
+    ac.uc.mem_write(link, bytes(0x108))
+    ac.wr32(link + 4, min(16, len(user_ids)))
+    for i, pid in enumerate(user_ids[:16]):
+        ac.wr32(link + 0x88 + 4 * i, pid)
+    tmg["link"] = link
+    for off in (0x203835, 0x2F27D9, 0x2F2C85, 0x20934D, 0x2F0A2D, 0x2984CD):
+        ac.uc.mem_write(ac.FAKE + (off & ~1), b"\x70\x47")
+    for size in ((2880.0, 1800.0), (1024.0, 640.0), (1422.0, 800.0)):
+        screen_size[0], screen_size[1] = size
+        s = size[1] / 640.0
+        dw = size[0] / s
+        footer[0] = ac.alloc(0x400)
+        ac.uc.mem_write(footer[0], bytes(0x400))
+        ctx = ac.alloc(0x40)
+        ac.uc.mem_write(ctx, bytes(0x40))
+        ac.wr32(ctx + 4 + 4, 4)
+        ac.wr32(ctx + 4 + 13 * 4, 0x4321)
+        res = call(ac.LIB + syms["career_market_new_screen_hook"], ctx, ac.FAKE)
+        screen = ac.rd32(ctx + 4)
+        if res != 0x4321 or not screen:
+            print(f"FAIL team management screen not built ({res:#x})")
+            return 1
+        vt = ac.rd32(screen)
+        init, process, render_post = ac.rd32(vt + 3 * 4), ac.rd32(vt + 5 * 4), ac.rd32(vt + 36 * 4)
+        call(init, screen)
+
+        def frame():
+            record.clear()
+            call(render_post, screen)
+            call(process, screen)
+
+        def tap(x, y):
+            p2 = (int(x * s), int(y * s))
+            touch.update(pos=p2, down=p2, touching=1, pressed=1, released=0)
+            frame()
+            touch.update(touching=0, pressed=0, released=1)
+            frame()
+            touch.update(released=0)
+            frame()
+
+        def find(label):
+            for op in reversed(record):
+                if op[0] == "t" and op[3] == label:
+                    return (op[1] + text_w(label, op[5]) * 0.5) / s, (op[2] + 8.0 * s) / s
+            stats["bad"].append(f"team management: '{label}' not on screen")
+            return None
+
+        def tap_label(label):
+            frame()
+            at = find(label)
+            if at:
+                tap(*at)
+
+        before = dict(stats)
+        swaps0, saves0 = len(tmg["swaps"]), tmg["saves"]
+        frame()
+        tap(80, 56 + 10 + 0 * 48 + 23)                      # Lineup (the screen remembers its last section)
+        if shots and size[0] == 2880.0:
+            render_png(f"{shots}/10_teamman_lineup.png", size)
+        tap_label("4-4-2")                                  # formation
+        if ac.uc.mem_read(cteam + 0x12F, 1)[0] != 0:
+            stats["bad"].append("team management: formation tap did not set the formation")
+        tap_label("4-3-3")
+        # pick a player on the pitch, Swap, then another
+        frame()
+        discs = [op for op in record if op[0] == "t" and op[3].startswith("Player ")]
+        if len(discs) < 11:
+            stats["bad"].append(f"team management: {len(discs)} player names on the pitch")
+        else:
+            a, b = discs[0], discs[5]
+            tap((a[1] + text_w(a[3], a[5]) * 0.5) / s, a[2] / s - 30)
+            tap_label("Swap")
+            tap((b[1] + text_w(b[3], b[5]) * 0.5) / s, b[2] / s - 30)
+        if len(tmg["swaps"]) == swaps0:
+            stats["bad"].append("team management: the swap never reached SwapPlayersByID")
+        tap(80, 56 + 10 + 1 * 48 + 23)                      # Squad
+        if shots and size[0] == 2880.0:
+            frame(); render_png(f"{shots}/11_teamman_squad.png", size)
+        d0 = (int((176 + 150) * s), int(400 * s))
+        touch.update(pos=d0, down=d0, touching=1, pressed=1, released=0); frame()
+        touch["pressed"] = 0
+        for k in range(1, 7):
+            touch["pos"] = (d0[0], int((400 - 40 * k) * s)); frame()
+        touch.update(touching=0, released=1); frame(); touch.update(released=0); frame()
+        tap(176 + 150, 56 + 28 + 4 + 25)                    # a squad row
+        tap(80, 56 + 10 + 2 * 48 + 23)                      # Chemistry
+        if shots and size[0] == 2880.0:
+            frame(); render_png(f"{shots}/12_teamman_chemistry.png", size)
+        forwards0 = len(tmg["forwards"])
+        tap_label("Classic")
+        if tmg["forwards"][forwards0:] != [4]:
+            stats["bad"].append(f"team management: Classic forwarded {tmg['forwards'][forwards0:]}")
+        # Classic built the stock screen once
+        ctx2 = ac.alloc(0x40); ac.uc.mem_write(ctx2, bytes(0x40)); ac.wr32(ctx2 + 8, 4); ac.wr32(ctx2 + 4 + 13 * 4, 0x4321)
+        if call(ac.LIB + syms["career_market_new_screen_hook"], ctx2, ac.FAKE) != 0:
+            stats["bad"].append("team management: Classic did not let the stock screen through")
+        backs = stats["back"]
+        if not header[0]:
+            header[0] = ac.alloc(0x400); ac.uc.mem_write(header[0], bytes(0x400))
+        ac.wr32(header[0] + 0x310, 1)
+        frame()
+        if stats["back"] != backs + 1:
+            stats["bad"].append("team management: Android back did not leave the screen")
+        if tmg["saves"] == saves0:
+            stats["bad"].append("team management: leaving did not save the edited lineup")
+        call(ac.rd32(vt + 1 * 4), screen)                   # deleting destructor
+        drawn = stats["rect"] - before["rect"]
+        print(f"team management {int(size[0])}x{int(size[1])}: {drawn} rects, swaps {len(tmg['swaps']) - swaps0}, "
+              f"saves {tmg['saves'] - saves0}")
+    for w in ("TEAM MANAGEMENT", "Lineup", "Squad", "Chemistry", "TEAM CHEMISTRY", "AVG BOOST", "LAST 5", "BOOST",
+              "STARTING XI CHEMISTRY", "LINKS ON THE PITCH", "HOLDING THE XI BACK", "MATCH RATINGS, OLDEST FIRST",
+              "Match stat boost", "Position fit"):
+        if w not in seen:
+            stats["bad"].append(f"team management: '{w}' never drawn")
     if stats["bad"]:
         ok = False
         print("problems:", stats["bad"][:10])

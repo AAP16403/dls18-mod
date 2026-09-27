@@ -1484,6 +1484,44 @@ static void h_test_chem(void) {
         chem_prepare(base);
         if (a->apps_pm != 123) fail("chem: seeding ran again on a started career", a->apps_pm, 0);
     }
+    /* match boost through the SetupPlayer hook */
+    {
+        clear_ext3();
+        build_player_cache(base);
+        chem_sync();
+        int32_t *dlo = (int32_t *)((uint8_t *)(uintptr_t)(base + MATCH_SETUP_INFO) + 0xFB0);
+        int32_t saved_dlo = *dlo;
+        *dlo = -1;
+        static uint8_t cp[0x140];
+        ModCtx ctx;
+        memset(&ctx, 0, sizeof(ctx));
+        ctx.r[0] = (uint32_t)(uintptr_t)cp;
+        int32_t ai_id = -1;
+        for (int32_t i = 0; i < g_player_count && ai_id < 0; ++i) if (g_players[i].owner_id != USER_TEAM_ID) ai_id = g_players[i].player_id;
+        for (int32_t round = 0; round < 2; ++round) {                   /* SetupPlayer rewrites the bytes each time */
+            memset(cp, 0, sizeof(cp));
+            *(uint16_t *)(cp + 0x70) = (uint16_t)ids[0];
+            for (int32_t k = 0x120; k <= 0x12C; ++k) cp[k] = 70;
+            chem_setup_player_hook(&ctx, base);
+        }
+        ChemParts q;
+        chem_parts(ids[0], &q);
+        int32_t want = (70 * (1000 + chem_boost_x10(q.chemistry)) + 500) / 1000;
+        if (cp[0x127] != want || cp[0x129] != want || cp[0x123] != want || cp[0x12B] != want)
+            fail("chem: boosted stat wrong", cp[0x127], want);
+        if (cp[0x125] != 70 || cp[0x126] != 70 || cp[0x122] != 70 || cp[0x121] != 70) fail("chem: a physical stat was boosted", cp[0x126], 70);
+        memset(cp, 0, sizeof(cp));
+        *(uint16_t *)(cp + 0x70) = (uint16_t)ai_id;
+        for (int32_t k = 0x120; k <= 0x12C; ++k) cp[k] = 70;
+        chem_setup_player_hook(&ctx, base);
+        if (cp[0x127] != 70) fail("chem: an AI player was boosted", cp[0x127], 70);
+        *dlo = 5;
+        *(uint16_t *)(cp + 0x70) = (uint16_t)ids[0];
+        chem_setup_player_hook(&ctx, base);
+        if (cp[0x127] != 70) fail("chem: boosted in an online match", cp[0x127], 70);
+        *dlo = saved_dlo;
+        if (!h_quiet) printf("chemistry boost: stat 70 -> %d at chemistry %d, AI and online untouched\n", want, q.chemistry);
+    }
     memcpy(&g_market, &saved_market, sizeof(g_market));
     memcpy(&g_ext, saved_ext, sizeof(g_ext));
     memcpy(&g_ext3, &saved_ext3, sizeof(g_ext3));
@@ -1493,6 +1531,147 @@ static void h_test_chem(void) {
     if (!h_quiet) printf("chemistry: boost 1-15%% smooth, settled starter %d, good sub %d vs poor sub %d, poor regular %d, "
                          "new signing %d -> %d -> %d, 0xB7 save kept, 0xB6 save safe, device capture and season seeding OK\n",
                          reg.chemistry, gsub.chemistry, psub.chemistry, preg.chemistry, start.chemistry, mid_newcomer, fresh.chemistry);
+}
+
+/* Team Management v2 mocks */
+static int32_t h_tmg_swaps, h_tmg_saves, h_tmg_ingame, h_tmg_swap_result;
+static int32_t h_tmg_swap_a, h_tmg_swap_b;
+static uint8_t h_tmg_link[0x108];
+static int32_t m_tmg_swap(void *tm, int32_t a, int32_t b, int32_t force, int32_t x, int32_t y) {
+    (void)force; (void)x; (void)y;
+    ++h_tmg_swaps; h_tmg_swap_a = a; h_tmg_swap_b = b;
+    if (h_tmg_swap_result) return h_tmg_swap_result;
+    uint8_t *ids = (uint8_t *)tm + 0x142;
+    for (int32_t i = 0; i < 32; ++i) for (int32_t k = 0; k < 32; ++k) {
+        uint16_t *pa = (uint16_t *)(ids + i * 2), *pb = (uint16_t *)(ids + k * 2);
+        if (*pa == a && *pb == b) { *pa = (uint16_t)b; *pb = (uint16_t)a; return 0; }
+    }
+    return 0;
+}
+static void m_tmg_save(void *tm, int32_t really) { (void)tm; if (really) ++h_tmg_saves; }
+static int32_t m_tmg_ingame(void) { return h_tmg_ingame; }
+static const uint8_t *m_tmg_team_link(int32_t team) { return team == USER_TEAM_ID ? h_tmg_link : (const uint8_t *)0; }
+static int32_t m_tmg_suit(void *self, int32_t own, int32_t want) { (void)self; return own > want ? own - want : want - own; }
+
+static void h_test_tmg(void) {
+    static CareerMarketState saved_market;
+    static uint8_t saved_ext[sizeof(g_ext)];
+    static MarketExt3 saved_ext3;
+    uint32_t base = FAKE_BASE;
+    thunk(0x2938CD, m_tm_player_name);
+    thunk(0x20C0C9, m_tm_team_name);
+    thunk(0x2F27D9, m_tmg_swap);
+    thunk(0x2F2C85, m_tmg_save);
+    thunk(0x203835, m_tmg_ingame);
+    thunk(0x20934D, m_tmg_team_link);
+    thunk(0x2F0A2D, m_tmg_suit);
+    sync_accounts(base);
+    build_player_cache(base);
+    memcpy(&saved_market, &g_market, sizeof(g_market));
+    memcpy(saved_ext, &g_ext, sizeof(g_ext));
+    memcpy(&saved_ext3, &g_ext3, sizeof(g_ext3));
+    uint8_t *tm = (uint8_t *)(uintptr_t)(base + PROFILE_INSTANCE + 0x14 + 0x6E0);
+    static uint8_t saved_tm[0x200];
+    memcpy(saved_tm, tm, sizeof(saved_tm));
+    static uint8_t cteam[0x1100];
+    memset(cteam, 0, sizeof(cteam));
+    int32_t ids[40], n = 0;
+    for (int32_t i = 0; i < g_player_count && n < 40; ++i) if (g_players[i].owner_id == USER_TEAM_ID) ids[n++] = g_players[i].player_id;
+    if (n < 16) fail("tmg: squad too small", n, 0);
+    memset(tm, 0, 0x200);
+    tm[0x140] = 18;
+    for (int32_t i = 0; i < 18; ++i) *(uint16_t *)(tm + 0x142 + i * 2) = (uint16_t)ids[i];
+    *(uint8_t **)(tm + 0x194) = cteam;
+    *(uint8_t **)(cteam + 0x1014) = tm;
+    cteam[0x12F] = 6;                                                /* 4-3-3 */
+    /* formation tables (the real FS_iFormation* rows for 4-3-3) */
+    static const int32_t pos433[11] = {0, 1, 5, 7, 2, 12, 11, 13, 20, 19, 21};
+    static const int32_t fe433[11] = {0, 1, 3, 3, 2, 5, 5, 5, 9, 10, 9};
+    memcpy((uint8_t *)(uintptr_t)(base + 0x63A55C) + 6 * 44, pos433, 44);
+    memcpy((uint8_t *)(uintptr_t)(base + 0x63A76C) + 6 * 44, fe433, 44);
+    /* club link: the first 16 players, natural positions = their slot's position except player 3 (a keeper code) */
+    memset(h_tmg_link, 0, sizeof(h_tmg_link));
+    *(int32_t *)(h_tmg_link + LINK_PLAYER_COUNT) = 16;
+    for (int32_t i = 0; i < 16; ++i) {
+        *(int32_t *)(h_tmg_link + LINK_PLAYER_IDS + 4 * i) = ids[i];
+        h_tmg_link[LINK_TEAM_DATA + 4 * i + 1] = (uint8_t)(i < 11 ? pos433[i] : 12);
+    }
+    h_tmg_link[LINK_TEAM_DATA + 4 * 3 + 1] = 0;
+    int32_t *dlo = (int32_t *)((uint8_t *)(uintptr_t)(base + MATCH_SETUP_INFO) + 0xFB0);
+    int32_t saved_dlo = *dlo;
+    *dlo = -1;
+    clear_ext3();
+    memset(&g_tmg, 0, sizeof(g_tmg));
+    g_tm.base = base;
+    tmg_build(base);
+    if (!g_tmg.editable) fail("tmg: career lineup not editable", 0, 0);
+    if (g_tmg.formation != 6) fail("tmg: formation not read", g_tmg.formation, 6);
+    for (int32_t s2 = 0; s2 < 11; ++s2) if (g_tmg.xi[s2] != ids[s2]) fail("tmg: XI order wrong", s2, g_tmg.xi[s2]);
+    if (g_tmg.row_count < n) fail("tmg: squad rows missing", g_tmg.row_count, n);
+    for (int32_t i = 0; i < g_tmg.row_count; ++i) {
+        const TmgRow *r = &g_tmg.rows[i];
+        if (g_players[r->index].owner_id != USER_TEAM_ID) fail("tmg: a row is not a user player", i, 0);
+        if ((i < 11) != (r->slot >= 0)) fail("tmg: XI/bench split wrong", i, r->slot);
+    }
+    ChemPlayer *natural = chem_find(ids[1]), *keeper_out = chem_find(ids[3]), *overflow = chem_find(ids[0]);
+    if (!natural || natural->fit_pm != 1000) fail("tmg: natural position fit wrong", natural ? natural->fit_pm : -1, 1000);
+    if (!keeper_out || keeper_out->fit_pm >= 800) fail("tmg: out-of-position fit too high", keeper_out ? keeper_out->fit_pm : -1, 0);
+    (void)overflow;
+    /* swap two XI players, change formation, save once on leaving */
+    h_tmg_swaps = h_tmg_saves = 0; h_tmg_swap_result = 0;
+    g_tmg.swap_from = ids[5];
+    TmHit hit = {0, 0, 0, 0, TMG_HIT_PLAYER, ids[12]};
+    tmg_activate(base, &hit);
+    if (h_tmg_swaps != 1 || h_tmg_swap_a != ids[5] || h_tmg_swap_b != ids[12]) fail("tmg: swap not called right", h_tmg_swaps, h_tmg_swap_b);
+    tmg_build(base);
+    if (g_tmg.xi[5] != ids[12]) fail("tmg: swap not reflected", g_tmg.xi[5], ids[12]);
+    TmHit fh = {0, 0, 0, 0, TMG_HIT_FORMATION, 0};
+    tmg_activate(base, &fh);
+    if (cteam[0x12F] != 0) fail("tmg: formation not set", cteam[0x12F], 0);
+    tmg_leave(base);
+    tmg_leave(base);
+    if (h_tmg_saves != 1) fail("tmg: lineup not saved exactly once", h_tmg_saves, 1);
+    /* a refused swap changes nothing and is not saved */
+    h_tmg_swap_result = 3;
+    g_tmg.swap_from = ids[0];
+    TmHit rh = {0, 0, 0, 0, TMG_HIT_PLAYER, ids[1]};
+    tmg_activate(base, &rh);
+    tmg_leave(base);
+    if (h_tmg_saves != 1) fail("tmg: a refused swap was saved", h_tmg_saves, 1);
+    /* read-only when CTeam's team management is not the career one */
+    *(uint8_t **)(cteam + 0x1014) = (uint8_t *)0;
+    tmg_build(base);
+    h_tmg_swaps = 0;
+    g_tmg.swap_from = ids[0];
+    tmg_activate(base, &rh);
+    if (g_tmg.editable || h_tmg_swaps) fail("tmg: edited a lineup that is not the career one", h_tmg_swaps, 0);
+    *(uint8_t **)(cteam + 0x1014) = tm;
+    /* stock screen: in a match, in an online match, and once after Classic */
+    h_tmg_ingame = 1;
+    if (tmg_build_screen(base)) fail("tmg: replaced the in-match screen", 0, 0);
+    h_tmg_ingame = 0;
+    *dlo = 7;
+    if (tmg_build_screen(base)) fail("tmg: replaced the screen in an online match", 0, 0);
+    *dlo = -1;
+    g_tmg_stock_once = 1;
+    if (tmg_build_screen(base) || g_tmg_stock_once) fail("tmg: Classic did not let the stock screen through once", 0, 0);
+    *dlo = saved_dlo;
+    memcpy(tm, saved_tm, sizeof(saved_tm));
+    memcpy(&g_market, &saved_market, sizeof(g_market));
+    memcpy(&g_ext, saved_ext, sizeof(g_ext));
+    memcpy(&g_ext3, &saved_ext3, sizeof(g_ext3));
+    sync_accounts(base);
+    build_player_cache(base);
+    ++g_price_epoch;
+    thunk(0x2938CD, m_unexpected);
+    thunk(0x20C0C9, m_unexpected);
+    thunk(0x2F27D9, m_unexpected);
+    thunk(0x2F2C85, m_unexpected);
+    thunk(0x203835, m_unexpected);
+    thunk(0x20934D, m_unexpected);
+    thunk(0x2F0A2D, m_unexpected);
+    if (!h_quiet) printf("team management v2: lineup, XI/bench, position fit, swap, formation, one save, read-only guard, "
+                         "stock screen in matches/online/Classic OK\n");
 }
 
 static void h_test_tm2(void) {
@@ -1867,6 +2046,7 @@ int main(int argc, char **argv) {
     h_test_tm2();
     h_test_hub();
     h_test_chem();
+    h_test_tmg();
     FILE *csv = csv_path ? fopen(csv_path, "w") : NULL;
     if (csv) fprintf(csv, "season,club,rep,tier_value,cash,budget,wage_budget,payroll,revenue,squad_value,strength,size\n");
 
